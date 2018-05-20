@@ -13,25 +13,6 @@ import pandas as pd
 from fuzzywuzzy import fuzz
 from nltk.tokenize import sent_tokenize
 
-abbr = [('Inc','Incorporated'),('Incorp','Incorporated'), ('Assn','Association'),
-        ('CORP', 'Corporation'), ('CO', 'Company'), ('LTD', 'Limited'), ('BANCORP', 'Banking Corporation'),
-        ('MOR',	'Mortgage'), ('Banc', 'Banking Corporation'), ('THRU', 'Through'), ('COMM',	'Communication'),
-        ('COMPANIES', 'Company'), ('Mort', 'Mortgage'), ('Thr','Through'), ('Sec', 'Securities'),
-        ('BANCORPORATION', 'Banking Corporation'), ('RESOURCE', 'Resources'), ('Holding', 'Holdings'), ('Security', 'Securities'),
-        ('ENTERPRISE','Enterprises'),('funding','fundings')]
-suffix = ['Incorporated', 'Corporation', 'LLC', 'Company', 'Limited', 'trust', 'Banking Corporation', 'Company', 'Holdings', 
-        'Holding', 'Securities', 'Security', 'Group', 'ENTERPRISES', 'international', 'Bank', 'fund', 'funds','university']
-suffix_regex = '|'.join(suffix)
-
-comp_ = pd.read_csv('comp_name.csv')
-comp_words = []
-for name in comp_.conm.map(lambda x:re.split('\s+',re.sub(r'[^\w\s]','',name))):
-    comp_words.extend(name.lower())
-unique_word = [word for word, num in Counter(comp_words).most_common() if num==1]
-
-with open('locations.csv','r') as f:
-    location_name = [r[0] for r in csv.reader(f)]
-
 def abbr_adj(name): # replace abbr to full
     for string, adj_string in abbr:
         name = re.sub('(?:\s|\.|\,)'+string+'(?!\w)', 
@@ -75,6 +56,40 @@ def first_letters(name): # get the first letter of firm names in order to match 
 def remove_punc(name):
     return re.sub(r'[^\w\s]','',name)
 
+abbr = [('Inc','Incorporated'),('Incorp','Incorporated'), ('Assn','Association'),
+        ('CORP', 'Corporation'), ('CO', 'Company'), ('LTD', 'Limited'), ('BANCORP', 'Banking Corporation'),
+        ('MOR',	'Mortgage'), ('Banc', 'Banking Corporation'), ('THRU', 'Through'), ('COMM',	'Communication'),
+        ('COMPANIES', 'Company'), ('Mort', 'Mortgage'), ('Thr','Through'), ('Sec', 'Securities'),
+        ('BANCORPORATION', 'Banking Corporation'), ('RESOURCE', 'Resources'), ('Holding', 'Holdings'), ('Security', 'Securities'),
+        ('ENTERPRISE','Enterprises'),('funding','fundings')]
+suffix = ['Incorporated', 'Corporation', 'LLC', 'Company', 'Limited', 'trust', 'Banking Corporation', 'Company', 'Holdings', 
+        'Holding', 'Securities', 'Security', 'Group', 'ENTERPRISES', 'international', 'Bank', 'fund', 'funds','university']
+suffix_regex = '|'.join(suffix)
+
+base_ = pd.read_csv('base_name.csv').dropna()
+main_ = pd.read_csv('uspto.csv').dropna()
+# construct unique words list
+name_set = dict()
+for gvkey, name in base_.values:
+    x = re.split('\s+',name)
+    if gvkey in name_set:
+        for x in name:
+            name_set[gvkey].add(x.lower())
+    else:
+        name_set[gvkey] = set([x.lower() for x in x])
+word_list = []
+for v in name_set.values():
+    word_list.extend(list(v))
+unique_word = [word for word,n in Counter(word_list).most_common() if n==1]   
+
+# adjust abbreviations
+base_['abbr_name'] = base_[base_.columns[1]].map(abbr_adj)
+main_['abbr_name'] = main_[main_.columns[1]].map(abbr_adj)
+
+# Construct location list
+with open('locations.csv','r') as f:
+    location_name = [r[0] for r in csv.reader(f)]
+
 def not_has_adpos(word):
     # return False/None means it does have adpos and it leads keep of the matching pair.
     if re.search('\s+(in|against|name|to|of)(?!\w)',word, re.I) or \
@@ -86,11 +101,13 @@ def not_has_adpos(word):
 def match(x, y):
     ''' matching between two names and write to file...
     '''
+    if fuzz.token_set_ratio(x,y) < 55:
+        return
     x, y = abbr_adj(x), abbr_adj(y)
     x_words, y_words = re.split('\s+',remove_punc(x)), re.split('\s+',remove_punc(y))
     ''' Scenario 1 : the neighbour of matched words must be matched, unless there is no neighbours:
     '''
-    matching_pos_x,matching_pos_y = None, None
+    matching_pos_x, matching_pos_y = None, None
     threshold = 94
     identified = False
     # create dict to index sequences
@@ -105,7 +122,7 @@ def match(x, y):
                 if match_count == 1:
                     if id_x != 0 and id_y != 0:
                         return # If the first match, it must be the first letter of either x or y
-                        
+
                     if len(x_words) == 1 or len(y_words) == 1:
                         if y_word.lower() not in unique_word:# if the only word in the name is not unique, exclude
                             return
@@ -138,27 +155,23 @@ def match(x, y):
                                 return
     if identified:
         return True
-def unpacking(mp_file):
+def unpacking(main_row):
     lst = []
-    with open(f'.\\match_pool\\{mp_file}') as f:
-        rd = csv.reader(f)
-        for m_index, m_name, s_index, s_name, m_adj, s_adj, type_ in rd:
-            if type_ == 'full':
-                if match(m_name, s_name):
-                    lst.append([m_index, m_name, s_index, s_name, type_])
-    return lst
+    main_index, main_name, main_abbr = main_row
+    for base_index, base_name, base_abbr in base_.values:
+        if match(main_abbr, base_abbr):
+            lst.append([main_index, main_name, base_index, base_name])
+    return (main_index, lst)
 
-
-mp = os.listdir('.\\match_pool\\')
 wastime = dt.now()
 print(wastime)
 def main():
     with ProcessPoolExecutor() as e:
         with open('__coname__.csv','w',newline='') as w:
             wr = csv.writer(w)
-            for mp_file, result in zip(mp, e.map(unpacking, mp,chunksize=100)):
-                print(mp_file)
-                if result is not None:
+            for index, result in e.map(unpacking, main_.values):
+                print(index)
+                if result:
                     for matched in result:
                         wr.writerow(matched)
 if __name__ == '__main__':
