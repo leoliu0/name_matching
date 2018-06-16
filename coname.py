@@ -67,7 +67,7 @@ suffix = ['Incorporated', 'Corporation', 'LLC', 'Company', 'Limited', 'trust', '
 suffix_regex = '|'.join(suffix)
 
 base_ = pd.read_csv('base_name.csv').dropna()
-main_ = pd.read_csv('uspto.csv').dropna()
+main_ = pd.read_csv('matched.csv').dropna()
 # construct unique words list
 name_set = dict()
 for gvkey, name in base_.values:
@@ -128,6 +128,10 @@ def match(x, y):
                             return
                     elif (len(x_words) == id_x + 1) or (len(y_words) == id_y + 1):# if head matches tail, exclude
                         return
+                    elif len(x_words)>2 and len(y_words)>2:
+                        if fuzz.token_set_ratio(' '.join(x_words[:2]), ' '.join(y_words[-2:])) == 100 or \
+                            fuzz.token_set_ratio(' '.join(x_words[-2:]), ' '.join(y_words[:2])) == 100:
+                            return # if head 2 words match tail 2 words, exclude
 
                     if id_x > 0:
                         if not_has_adpos(' '.join(x_words[:id_x])):
@@ -166,7 +170,7 @@ def unpacking(main_row):
 wastime = dt.now()
 print(wastime)
 def main():
-    with ProcessPoolExecutor() as e:
+    with ProcessPoolExecutor(max_workers=30) as e:
         with open('__coname__.csv','w',newline='') as w:
             wr = csv.writer(w)
             for index, result in e.map(unpacking, main_.values):
