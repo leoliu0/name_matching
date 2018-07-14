@@ -1,3 +1,4 @@
+import argparse
 import csv
 import math
 import os
@@ -7,12 +8,16 @@ import sys
 from collections import Counter, defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime as dt
-from unicodedata import normalize
 from itertools import *
+from unicodedata import normalize
 
 import pandas as pd
 from fuzzywuzzy import fuzz
 from nltk.tokenize import sent_tokenize
+
+parser = argparse.ArgumentParser()
+parser.add_argument("input file", help="type the name of the to-match file")
+filename = parser.parse_args()
 
 def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2,s3), ..."
@@ -76,7 +81,7 @@ suffix = ['Incorporated', 'Corporation', 'LLC', 'Company', 'Limited', 'trust', '
 suffix_regex = '|'.join(suffix)
 
 base_ = pd.read_csv('base_name.csv').dropna()
-main_ = pd.read_csv('US_assignees.csv').dropna()
+main_ = pd.read_csv(filename).dropna()
 # construct unique words list
 name_set = dict()
 for gvkey, name in base_.values:
@@ -94,6 +99,9 @@ unique_word = [word for word,n in Counter(word_list).most_common() if n==1]
 # adjust abbreviations
 base_['abbr_name'] = base_[base_.columns[1]].map(abbr_adj)
 main_['abbr_name'] = main_[main_.columns[1]].map(abbr_adj)
+# disambiguation
+base_['disambiguated'] = base_[base_.columns[1]].map(name_preprocessing)
+main_['disambiguated'] = main_[main_.columns[1]].map(name_preprocessing)
 
 # Construct location list
 with open('locations.csv','r') as f:
@@ -140,8 +148,8 @@ def name_preprocessing(z):
     return z,words
 
 def permutation(x,y):
-    x,x_words = name_preprocessing(x)
-    y,y_words = name_preprocessing(y)
+    x,x_words = x
+    y,y_words = y
     if match(x, y, x_words, y_words):
         return True
     if len(x_words)>2:
@@ -180,9 +188,9 @@ def match(x,y,x_words,y_words):
                     return True
 def unpacking(main_row):
     lst = []
-    main_index, main_name, main_abbr = main_row
-    for base_index, base_name, base_abbr in base_.values:
-        if permutation(main_abbr, base_abbr):
+    main_index, main_name, main_abbr, main_disamb = main_row
+    for base_index, base_name, base_abbr, base_disamb in base_.values:
+        if permutation(main_disamb, base_disamb):
             lst.append([main_index, main_name, base_index, base_name])
     return (main_index, lst)
 
