@@ -27,7 +27,7 @@ def pairwise(iterable):
 
 def abbr_adj(name): # replace abbr to full
     for string, adj_string in abbr:
-        name = re.sub('(?:\s|\.|\,)'+string+'(?!\w)', 
+        name = re.sub('(?<!\w)'+string+'(?!\w)', 
                         ' ' +adj_string, name, flags=re.IGNORECASE)
     return name.strip()                    
 
@@ -39,9 +39,9 @@ def suffix_adj(name): # Remove suffix
 
 def capital_letters(name):
     for string in suffix:
-        found_suffix = re.findall('(?:\s|\.|\,)'+string+'(?!\w)',name,re.IGNORECASE)
+        found_suffix = re.findall('(?<!\w)'+string+'(?!\w)',name,re.IGNORECASE)
         if found_suffix:
-            name = re.sub('(?:\s|\.|\,)'+string+'(?!\w)', 
+            name = re.sub('(?<!\w)'+string+'(?!\w)', 
                         '', name, flags=re.IGNORECASE)
             break
     if found_suffix and len(name)>1: # If the length of name longer than 1, such as HP, return HP Inc
@@ -54,9 +54,9 @@ def capital_letters(name):
 
 def first_letters(name): # get the first letter of firm names in order to match their abbr...
     for string in suffix:
-        found_suffix = re.findall('(?:\s|\.|\,)'+string+'(?!\w)',name,re.IGNORECASE)
+        found_suffix = re.findall('(?<!\w)'+string+'(?!\w)',name,re.IGNORECASE)
         if found_suffix:
-            name = re.sub('(?:\s|\.|\,)'+string+'(?!\w)', 
+            name = re.sub('(?<!\w)'+string+'(?!\w)', 
                         '', name, flags=re.IGNORECASE)
             break
     if found_suffix and len(name)>1: # If the length of name longer than 1, such as HP, return HP Inc
@@ -72,11 +72,12 @@ def remove_punc(name):
 
 def first_two_adj(words):
     if len(words)>2:
-        return ''.join(words[:2])+ ' ' + ' '.join(words[2:])
+        return abbr_adj(''.join(words[:2])+ ' ' + ' '.join(words[2:]))
 
 def first_three_adj(words):
     if len(words)>3:
-        return ''.join(words[:3])+ ' ' + ' '.join(words[3:])
+        return abbr_adj(''.join(words[:3])+ ' ' + ' '.join(words[3:]))
+
 
 def name_preprocessing(z):
     z = z.replace('-REDH','').replace('-OLD','').replace('-NEW','')
@@ -122,20 +123,6 @@ suffix_regex = '|'.join(suffix)
 
 base_ = pd.read_csv('base_name.csv').dropna()
 main_ = pd.read_csv(filename).dropna()
-# construct unique words list
-name_set = dict()
-for gvkey, name in base_.values:
-    x = re.split('\s+',name)
-    if gvkey in name_set:
-        for x in name:
-            name_set[gvkey].add(x.lower())
-    else:
-        name_set[gvkey] = set([x.lower() for x in x])
-word_list = []
-for v in name_set.values():
-    word_list.extend(list(v))
-unique_word = [word for word,n in Counter(word_list).most_common() if n==1]   
-
 # adjust abbreviations
 base_['abbr_name'] = base_[base_.columns[1]].map(abbr_adj)
 main_['abbr_name'] = main_[main_.columns[1]].map(abbr_adj)
@@ -200,23 +187,33 @@ def match(x, y, x_words, y_words, without_suffix_x, without_suffix_y):
         return #low score discarded
 
     if fuzz.token_set_ratio(x,y) > 97:
-        if len(without_suffix_x) == len(without_suffix_y):
-            return True
         first_word_x, first_word_y = x_words[0], y_words[0]
-        if (fuzz.token_set_ratio(first_word_x, first_word_y)>94) and (first_word_y in unique_word):
+        first_score = fuzz.ratio(first_word_x, first_word_y)
+        if len(without_suffix_x) == len(without_suffix_y):
+            if first_score>90:
+                return True
+            else:
+                try:
+                    xyset = (set(without_suffix_x) & set(without_suffix_y)).remove('s')
+                except:
+                    xyset = (set(without_suffix_x) & set(without_suffix_y))
+                if xyset == set(without_suffix_x):
+                    return True
+        if first_score>90 and (first_word_y in unique_word):
             return True
+            
+    if len(y_words)>1 and len(x_words)>1: # paired words must are first two of either names
+        y1,y2 = y_words[:2]
+        if (y1,y2) in pair_word and 'of' not in (y1,y2) and 's' not in (y1,y2):
+            for x1,x2 in pairwise(x_words):
+                if fuzz.ratio(x1,y1)> 90 and fuzz.ratio(x2,y2)> 90:
+                    return True
+        x1,x2 = x_words[:2]
+        for y1,y2 in pairwise(y_words):
+            if (y1,y2) in pair_word and 'of' not in (y1,y2) and 's' not in (y1,y2):
+                if fuzz.ratio(x1,y1)> 90 and fuzz.ratio(x2,y2)> 90:
+                    return True
 
-        if len(y_words)>1 and len(x_words)>1: # paired words must are first two of either names
-            y1,y2 = y_words[:2]
-            if (y1,y2) in pair_word:
-                for x1,x2 in pairwise(x_words):
-                    if fuzz.token_set_ratio(x1,y1)> 94 and fuzz.token_set_ratio(x2,y2)> 94:
-                        return True
-            x1,x2 = x_words[:2]
-            for y1,y2 in pairwise(y_words):
-                if (y1,y2) in pair_word:
-                    if fuzz.token_set_ratio(x1,y1)> 94 and fuzz.token_set_ratio(x2,y2)> 94:
-                        return True
 def unpacking(main_row):
     lst = []
     main_index, main_name, main_abbr, main_disamb = main_row
