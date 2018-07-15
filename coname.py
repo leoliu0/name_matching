@@ -16,8 +16,8 @@ from fuzzywuzzy import fuzz
 from nltk.tokenize import sent_tokenize
 
 parser = argparse.ArgumentParser()
-parser.add_argument("input file", help="type the name of the to-match file")
-filename = parser.parse_args()
+parser.add_argument("input", help="type the name of the to-match file")
+filename = parser.parse_args().input
 
 def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2,s3), ..."
@@ -33,7 +33,7 @@ def abbr_adj(name): # replace abbr to full
 
 def suffix_adj(name): # Remove suffix
     for string in suffix:
-        name = re.sub('(?:\s|\.|\,)'+string+'(?!\w)', # The string has to be after some punctuations or space.
+        name = re.sub('(?<!\w)'+string+'(?!\w)', # The string has to be after some punctuations or space.
                         '', name, flags=re.IGNORECASE)
     return name.strip()
 
@@ -68,6 +68,46 @@ def first_letters(name): # get the first letter of firm names in order to match 
 def remove_punc(name):
     name = name.replace('&',' ').replace('-',' ').replace('.',' ').replace(',',' ').replace('/',' ').replace("'",' ')
     return re.sub(r'[^\w\s]','',name).strip()
+
+
+def first_two_adj(words):
+    if len(words)>2:
+        return ''.join(words[:2])+ ' ' + ' '.join(words[2:])
+
+def first_three_adj(words):
+    if len(words)>3:
+        return ''.join(words[:3])+ ' ' + ' '.join(words[3:])
+
+def name_preprocessing(z):
+    z = z.replace('-REDH','').replace('-OLD','').replace('-NEW','')
+    z = abbr_adj(z)
+    z = remove_punc(z)
+    z = re.sub('The ','', z, flags=re.I)
+    z = z.lower()
+    # combining single words...
+    s = re.findall('(?<!\w)\w\s\w\s\w(?!\w)',z)
+    if s:
+        z = re.sub('(?<!\w)\w\s\w\s\w(?!\w)',s[0].replace(' ',''),z)
+    s = re.findall('(?<!\w)\w\s\w(?!\w)',z)
+    if s:
+        z = re.sub('(?<!\w)\w\s\w(?!\w)',s[0].replace(' ',''),z)
+    words = re.split('\s+',remove_punc(z))
+    without_suffix = [x for x in re.split('\s+',suffix_adj(z)) if x]
+    two_ = first_two_adj(words)
+    three_ = first_three_adj(words)
+    if two_:
+        two_words = re.split('\s+',remove_punc(two_))
+        two_ws = [x for x in re.split('\s+',suffix_adj(two_)) if x]
+    else:
+        two_words, two_ws = None, None
+    if three_:
+        three_words = re.split('\s+',remove_punc(three_))
+        three_ws = [x for x in re.split('\s+',suffix_adj(three_)) if x]
+    else:
+        three_words, three_ws = None, None
+
+    return z,words,without_suffix,two_,two_words,two_ws,three_,three_words,three_ws
+
 
 abbr = [('Inc','Incorporated'),('Incorp','Incorporated'), ('Assn','Association'),
         ('CORP', 'Corporation'), ('CO', 'Company'), ('LTD', 'Limited'), ('MOR', 'Mortgage'), 
@@ -112,7 +152,7 @@ with open('locations.csv','r') as f:
 gvkey_single_dict = dict()
 gvkey_pair_dict = dict()
 
-for gvkey, name, abbr in base_.values:
+for gvkey, name, abbr, disamb in base_.values:
     x = re.split('\s+',remove_punc(abbr.lower()))
     if gvkey in gvkey_single_dict:
         for x in name:
@@ -132,60 +172,51 @@ for v in gvkey_pair_dict.values():
 unique_word = [word for word,n in Counter(single_list).most_common() if n<=2]
 pair_word = [word for word,n in Counter(pair_list).most_common() if n<=2]
 
-def name_preprocessing(z):
-    z = z.replace('-REDH','').replace('-OLD','').replace('-NEW','')
-    z = abbr_adj(z)
-    z = remove_punc(z)
-    z = re.sub('The ','', z, flags=re.I)
-    # combining single words...
-    s = re.findall('(?<!\w)\w\s\w\s\w(?!\w)',z)
-    if s:
-        z = re.sub('(?<!\w)\w\s\w\s\w(?!\w)',s[0].replace(' ',''),z)
-    s = re.findall('(?<!\w)\w\s\w(?!\w)',z)
-    if s:
-        z = re.sub('(?<!\w)\w\s\w(?!\w)',s[0].replace(' ',''),z)
-    words = re.split('\s+',remove_punc(z))
-    return z,words
-
 def permutation(x,y):
-    x,x_words = x
-    y,y_words = y
-    if match(x, y, x_words, y_words):
+    x,x_words,without_suffix_x,two_x,two_words_x,two_ws_x,three_x,three_words_x,three_ws_x = x
+    y,y_words,without_suffix_y,two_y,two_words_y,two_ws_y,three_y,three_words_y,three_ws_y = y
+    if len(set(x) & set(y) - set(' '))<2:
+        return False
+    if fuzz.token_set_ratio(x,y) < 55:
+        return False
+    if match(x,y,x_words,y_words, without_suffix_x, without_suffix_y):
         return True
-    if len(x_words)>2:
-        if match(''.join(x_words[:2])+ ' ' + ' '.join(x_words[2:]), y, [''.join(x_words[:2])]+ x_words[2:], y_words):
+    if two_x:
+        if match(two_x, y, two_words_x, y_words, two_ws_x, without_suffix_y):
             return True
-    if len(y_words)>2:
-        if match(x, ''.join(y_words[:2])+ ' ' + ' '.join(y_words[2:]),x_words,[''.join(y_words[:2])]+ y_words[2:]):
+        if three_x:
+            if match(three_x, y, three_words_x, y_words, three_ws_x, without_suffix_y):
+                return True
+    if two_y:
+        if match(x, two_y, x_words, two_words_y, without_suffix_x, two_ws_y):
             return True
-    if len(x_words)>3:
-        if match(''.join(x_words[:3])+ ' ' + ' '.join(x_words[3:]), y, [''.join(x_words[:3])]+ x_words[3:], y_words):
-            return True
-    if len(y_words)>3:
-        if match(x, ''.join(y_words[:3])+ ' ' + ' '.join(y_words[3:]),x_words,[''.join(y_words[:3])]+ y_words[3:]):
-            return True
-def match(x,y,x_words,y_words):
-    
-    without_suffix_x, without_suffix_y = re.split('\s+',suffix_adj(x)), \
-                                            re.split('\s+',suffix_adj(y))
+        if three_x:
+            if match(x, three_y, x_words, three_words_y, without_suffix_x, three_ws_y):
+                return True    
+
+def match(x, y, x_words, y_words, without_suffix_x, without_suffix_y):
     score = fuzz.token_set_ratio(x,y)
-    if score < 55: 
+    if score < 70: 
         return #low score discarded
-    first_word_x, first_word_y = x_words[0].lower(), y_words[0].lower()
-    
-    if first_word_x == first_word_y and first_word_x in unique_word:
-        return True
+
     if fuzz.token_set_ratio(x,y) > 97:
         if len(without_suffix_x) == len(without_suffix_y):
             return True
-        if (first_word_x in unique_word) or (first_word_y in unique_word):
+        first_word_x, first_word_y = x_words[0], y_words[0]
+        if (fuzz.token_set_ratio(first_word_x, first_word_y)>94) and (first_word_y in unique_word):
             return True
-    
-    for y1,y2 in pairwise(without_suffix_y): #TODO, change to y when finish testing!
-        if (y1.lower(),y2.lower()) in pair_word:
-            for x1,x2 in pairwise(without_suffix_x):
-                if fuzz.token_set_ratio(x1,y1)> 94 and fuzz.token_set_ratio(x2,y2)> 94:
-                    return True
+
+        if len(y_words)>1 and len(x_words)>1: # paired words must are first two of either names
+            y1,y2 = y_words[:2]
+            if (y1,y2) in pair_word:
+                for x1,x2 in pairwise(x_words):
+                    if fuzz.token_set_ratio(x1,y1)> 94 and fuzz.token_set_ratio(x2,y2)> 94:
+                        return True
+            x1,x2 = x_words[:2]
+            for y1,y2 in pairwise(y_words):
+                if (y1,y2) in pair_word:
+                    if fuzz.token_set_ratio(x1,y1)> 94 and fuzz.token_set_ratio(x2,y2)> 94:
+                        return True
 def unpacking(main_row):
     lst = []
     main_index, main_name, main_abbr, main_disamb = main_row
@@ -197,7 +228,7 @@ def unpacking(main_row):
 wastime = dt.now()
 print(wastime)
 def main():
-    with ProcessPoolExecutor(max_workers=6) as e:
+    with ProcessPoolExecutor(max_workers=33) as e:
         with open('__coname__.csv','w',newline='') as w:
             wr = csv.writer(w)
             seq = 0
