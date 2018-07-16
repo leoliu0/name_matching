@@ -36,39 +36,9 @@ def suffix_adj(name): # Remove suffix
         name = re.sub('(?<!\w)'+string+'(?!\w)', # The string has to be after some punctuations or space.
                         '', name, flags=re.IGNORECASE)
     return name.strip()
-
-def capital_letters(name):
-    for string in suffix:
-        found_suffix = re.findall('(?<!\w)'+string+'(?!\w)',name,re.IGNORECASE)
-        if found_suffix:
-            name = re.sub('(?<!\w)'+string+'(?!\w)', 
-                        '', name, flags=re.IGNORECASE)
-            break
-    if found_suffix and len(name)>1: # If the length of name longer than 1, such as HP, return HP Inc
-        ls = re.findall('[A-Z]', name)
-        if len(ls)<2:
-            return
-        # Then we return all the captial letters with suffix.
-        # We add a space between HP and Inc because sometimes, let's say it's .inc got captured, then we strip all additional spaces.
-        return re.sub('\s{2,}',' ',''.join(ls+[' ']+found_suffix)).strip()
-
-def first_letters(name): # get the first letter of firm names in order to match their abbr...
-    for string in suffix:
-        found_suffix = re.findall('(?<!\w)'+string+'(?!\w)',name,re.IGNORECASE)
-        if found_suffix:
-            name = re.sub('(?<!\w)'+string+'(?!\w)', 
-                        '', name, flags=re.IGNORECASE)
-            break
-    if found_suffix and len(name)>1: # If the length of name longer than 1, such as HP, return HP Inc
-        ls = [x[0] for x in re.split('\s', name) if x]
-        if len(ls)<2:
-            return
-        return ''.join(ls) + found_suffix[0]
-
 def remove_punc(name):
     name = name.replace('&',' ').replace('-',' ').replace('.',' ').replace(',',' ').replace('/',' ').replace("'",' ')
     return re.sub(r'[^\w\s]','',name).strip()
-
 
 def first_two_adj(words):
     if len(words)>2:
@@ -77,7 +47,6 @@ def first_two_adj(words):
 def first_three_adj(words):
     if len(words)>3:
         return abbr_adj(''.join(words[:3])+ ' ' + ' '.join(words[3:]))
-
 
 def name_preprocessing(z):
     z = z.replace('-REDH','').replace('-OLD','').replace('-NEW','')
@@ -129,11 +98,6 @@ main_['abbr_name'] = main_[main_.columns[1]].map(abbr_adj)
 base_['disambiguated'] = base_[base_.columns[1]].map(name_preprocessing)
 main_['disambiguated'] = main_[main_.columns[1]].map(name_preprocessing)
 
-# Construct location list
-with open('locations.csv','r') as f:
-    location_name = [r[0] for r in csv.reader(f)]
-    location_name.append('USA')
-    
 # construct unique words list and unique pair words list
 gvkey_single_dict = dict()
 gvkey_pair_dict = dict()
@@ -161,10 +125,11 @@ pair_word = [word for word,n in Counter(pair_list).most_common() if n<=2]
 def permutation(x,y):
     x,x_words,without_suffix_x,two_x,two_words_x,two_ws_x,three_x,three_words_x,three_ws_x = x
     y,y_words,without_suffix_y,two_y,two_words_y,two_ws_y,three_y,three_words_y,three_ws_y = y
-    if len(set(x) & set(y) - set(' '))<2:
-        return False
+    if len(x)>7 and len(y)>7:
+        if len(set(x)&set(y))<4:
+            return
     if fuzz.token_set_ratio(x,y) < 55:
-        return False
+        return
     if match(x,y,x_words,y_words, without_suffix_x, without_suffix_y):
         return True
     if two_x:
@@ -192,10 +157,7 @@ def match(x, y, x_words, y_words, without_suffix_x, without_suffix_y):
             if first_score>90:
                 return True
             else:
-                try:
-                    xyset = (set(without_suffix_x) & set(without_suffix_y)).remove('s')
-                except:
-                    xyset = (set(without_suffix_x) & set(without_suffix_y))
+                xyset = (set(without_suffix_x) & set(without_suffix_y)).discard('s')
                 if xyset == set(without_suffix_x):
                     return True
         if first_score>90 and (first_word_y in unique_word):
