@@ -16,7 +16,8 @@ from fuzzywuzzy import fuzz
 from nltk.tokenize import sent_tokenize
 
 parser = argparse.ArgumentParser()
-parser.add_argument("input", 'subset', help="type the name of the to-match file")
+parser.add_argument("input")
+parser.add_argument("subset")
 filename = parser.parse_args().input
 subset = int(parser.parse_args().subset)
 
