@@ -83,12 +83,14 @@ def name_preprocessing(z):
 abbr = [('Inc','Incorporated'),('Incorp','Incorporated'), ('Assn','Association'),('intl', 'international'),
         ('CORP', 'Corporation'), ('CO', 'Company'), ('LTD', 'Limited'), ('MOR', 'Mortgage'), 
         ('Banc', 'Banking Corporation'), ('THRU', 'Through'), ('COMM', 'Communication'),
+        ('tech','technologies'),('technology','technologies'),('INDS','industries'),('industry','industries'),
         ('COMPANIES', 'Company'), ('Mort', 'Mortgage'), ('Thr','Through'), ('Sec', 'Securities'),
         ('BANCORPORATION', 'Banking Corporation'), ('RESOURCE', 'Resources'), ('Holding', 'Holdings'), ('Security', 'Securities'),
-        ('ENTERPRISE','Enterprises'),('funding','fundings'),('system','systems'),
+        ('ENTERPRISE','Enterprises'),('funding','fundings'),('system','systems'),('chem','chemical'),
         ('SYS','systems'),('MFG','manufacturing'),('Prod','products'),('Product','products')]
 suffix = ['Incorporated', 'Corporation', 'LLC', 'Company', 'Limited', 'trust', 'Company', 'Holdings', 
-        'Holding', 'Securities', 'Security', 'Group', 'ENTERPRISES', 'international', 'Bank', 'fund', 'funds','university']
+        'Holding', 'Securities', 'Security', 'Group', 'ENTERPRISES', 'international', 'Bank', 'fund', 'funds','university',
+         'and']
 suffix_regex = '|'.join(suffix)
 
 base_ = pd.read_csv('base_name.csv').dropna()
@@ -148,22 +150,33 @@ def permutation(x,y):
                 return True    
 
 def match(x, y, x_words, y_words, without_suffix_x, without_suffix_y):
-    score = fuzz.token_set_ratio(x,y)
-    if score < 70: 
+    score = fuzz.token_set_ratio(without_suffix_x,without_suffix_y)
+    if score < 90: 
         return #low score discarded
-    if fuzz.token_set_ratio(' '.join(without_suffix_x),' '.join(without_suffix_y)) > 90:
-        first_word_x, first_word_y = x_words[0], y_words[0]
-        first_score = fuzz.ratio(first_word_x, first_word_y)
-        if len(without_suffix_x) == len(without_suffix_y):
-            if first_score>90:
-                return True
-            else:
-                xyset = (set(without_suffix_x) & set(without_suffix_y))
-                xyset.discard('s')
-                if xyset == set(without_suffix_x):
-                    return True
-        if first_score>90 and (first_word_y in unique_word):
+    first_word_x, first_word_y = x_words[0], y_words[0]
+    first_score = fuzz.ratio(first_word_x, first_word_y)
+    if len(without_suffix_x) == len(without_suffix_y):
+        if first_score>90:
             return True
+        else:
+            xyset = (set(without_suffix_x) & set(without_suffix_y))
+            xyset.discard('s')
+            if xyset == set(without_suffix_x):
+                return True
+    if first_score>90 and (first_word_y in unique_word):
+        return True
+            
+    if len(y_words)>1 and len(x_words)>1: # paired words must are first two of either names
+        y1,y2 = y_words[:2]
+        if (y1,y2) in pair_word and 'of' not in (y1,y2) and 's' not in (y1,y2):
+            for x1,x2 in pairwise(x_words):
+                if fuzz.ratio(x1,y1)> 90 and fuzz.ratio(x2,y2)> 90:
+                    return True
+        x1,x2 = x_words[:2]
+        for y1,y2 in pairwise(y_words):
+            if (y1,y2) in pair_word and 'of' not in (y1,y2) and 's' not in (y1,y2):
+                if fuzz.ratio(x1,y1)> 90 and fuzz.ratio(x2,y2)> 90:
+                    return True
             
     if len(y_words)>1 and len(x_words)>1: # paired words must are first two of either names
         y1,y2 = y_words[:2]
