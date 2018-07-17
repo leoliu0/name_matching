@@ -80,13 +80,13 @@ def name_preprocessing(z):
 
     return z,words,without_suffix,two_,two_words,two_ws,three_,three_words,three_ws
 
-abbr = [('Inc','Incorporated'),('Incorp','Incorporated'), ('Assn','Association'),
+abbr = [('Inc','Incorporated'),('Incorp','Incorporated'), ('Assn','Association'),('intl', 'international'),
         ('CORP', 'Corporation'), ('CO', 'Company'), ('LTD', 'Limited'), ('MOR', 'Mortgage'), 
         ('Banc', 'Banking Corporation'), ('THRU', 'Through'), ('COMM', 'Communication'),
         ('COMPANIES', 'Company'), ('Mort', 'Mortgage'), ('Thr','Through'), ('Sec', 'Securities'),
         ('BANCORPORATION', 'Banking Corporation'), ('RESOURCE', 'Resources'), ('Holding', 'Holdings'), ('Security', 'Securities'),
-        ('ENTERPRISE','Enterprises'),('funding','fundings'),
-        ('SYS','system'),('MFG','manufacturing'),('Prod','products')]
+        ('ENTERPRISE','Enterprises'),('funding','fundings'),('system','systems'),
+        ('SYS','systems'),('MFG','manufacturing'),('Prod','products'),('Product','products')]
 suffix = ['Incorporated', 'Corporation', 'LLC', 'Company', 'Limited', 'trust', 'Company', 'Holdings', 
         'Holding', 'Securities', 'Security', 'Group', 'ENTERPRISES', 'international', 'Bank', 'fund', 'funds','university']
 suffix_regex = '|'.join(suffix)
@@ -104,8 +104,8 @@ main_['disambiguated'] = main_[main_.columns[1]].map(name_preprocessing)
 gvkey_single_dict = dict()
 gvkey_pair_dict = dict()
 
-for gvkey, name, abbr, disamb in base_.values:
-    x = re.split('\s+',remove_punc(abbr.lower()))
+for gvkey, name, abbrev, disamb in base_.values:
+    x = re.split('\s+',remove_punc(abbrev.lower()))
     if gvkey in gvkey_single_dict:
         for x in name:
             gvkey_single_dict[gvkey].add(x)
@@ -151,15 +151,15 @@ def match(x, y, x_words, y_words, without_suffix_x, without_suffix_y):
     score = fuzz.token_set_ratio(x,y)
     if score < 70: 
         return #low score discarded
-
-    if fuzz.token_set_ratio(x,y) > 97:
+    if fuzz.token_set_ratio(' '.join(without_suffix_x),' '.join(without_suffix_y)) > 90:
         first_word_x, first_word_y = x_words[0], y_words[0]
         first_score = fuzz.ratio(first_word_x, first_word_y)
         if len(without_suffix_x) == len(without_suffix_y):
             if first_score>90:
                 return True
             else:
-                xyset = (set(without_suffix_x) & set(without_suffix_y)).discard('s')
+                xyset = (set(without_suffix_x) & set(without_suffix_y))
+                xyset.discard('s')
                 if xyset == set(without_suffix_x):
                     return True
         if first_score>90 and (first_word_y in unique_word):
