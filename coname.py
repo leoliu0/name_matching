@@ -16,8 +16,9 @@ from fuzzywuzzy import fuzz
 from nltk.tokenize import sent_tokenize
 
 parser = argparse.ArgumentParser()
-parser.add_argument("input", help="type the name of the to-match file")
+parser.add_argument("input", 'subset', help="type the name of the to-match file")
 filename = parser.parse_args().input
+subset = int(parser.parse_args().subset)
 
 def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2,s3), ..."
@@ -186,12 +187,12 @@ def unpacking(main_row):
 wastime = dt.now()
 print(wastime)
 def main():
-    with ProcessPoolExecutor(max_workers=33) as e:
+    with ProcessPoolExecutor(max_workers=None) as e:
         with open('__coname__.csv','w',newline='') as w:
             wr = csv.writer(w)
-            seq = 0
+            seq = 0 + subset
             total_number = len(main_)
-            for index, result in e.map(unpacking, main_.values):
+            for index, result in e.map(unpacking, main_[subset:,:].values):
                 seq += 1
                 print(f'{seq} out of {total_number}, {index}')
                 if result:
