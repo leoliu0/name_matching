@@ -193,7 +193,7 @@ def main():
             wr = csv.writer(w)
             seq = 0 + subset
             total_number = len(main_)
-            for index, result in e.map(unpacking, main_[subset:,:].values):
+            for index, result in e.map(unpacking, main_.loc[subset:,:].values):
                 seq += 1
                 print(f'{seq} out of {total_number}, {index}')
                 if result:
