@@ -178,18 +178,6 @@ def match(x, y, x_words, y_words, without_suffix_x, without_suffix_y):
                 if fuzz.ratio(x1,y1)> 90 and fuzz.ratio(x2,y2)> 90:
                     return True
             
-    if len(y_words)>1 and len(x_words)>1: # paired words must are first two of either names
-        y1,y2 = y_words[:2]
-        if (y1,y2) in pair_word and 'of' not in (y1,y2) and 's' not in (y1,y2):
-            for x1,x2 in pairwise(x_words):
-                if fuzz.ratio(x1,y1)> 90 and fuzz.ratio(x2,y2)> 90:
-                    return True
-        x1,x2 = x_words[:2]
-        for y1,y2 in pairwise(y_words):
-            if (y1,y2) in pair_word and 'of' not in (y1,y2) and 's' not in (y1,y2):
-                if fuzz.ratio(x1,y1)> 90 and fuzz.ratio(x2,y2)> 90:
-                    return True
-
 def unpacking(main_row):
     lst = []
     main_index, main_name, main_abbr, main_disamb = main_row
