@@ -89,8 +89,7 @@ abbr = [('Inc','Incorporated'),('Incorp','Incorporated'), ('Assn','Association')
         ('ENTERPRISE','Enterprises'),('funding','fundings'),('system','systems'),('chem','chemical'),
         ('SYS','systems'),('MFG','manufacturing'),('Prod','products'),('Product','products')]
 suffix = ['Incorporated', 'Corporation', 'LLC', 'Company', 'Limited', 'trust', 'Company', 'Holdings', 
-        'Holding', 'Securities', 'Security', 'Group', 'ENTERPRISES', 'international', 'Bank', 'fund', 'funds','university',
-         'and']
+        'Holding', 'Group', 'ENTERPRISES', 'international', 'and']
 suffix_regex = '|'.join(suffix)
 
 base_ = pd.read_csv('base_name.csv').dropna()
@@ -151,32 +150,36 @@ def permutation(x,y):
 
 def match(x, y, x_words, y_words, without_suffix_x, without_suffix_y):
     score = fuzz.token_set_ratio(without_suffix_x,without_suffix_y)
-    if score < 90: 
+    if score < 94: 
         return #low score discarded
     first_word_x, first_word_y = x_words[0], y_words[0]
     first_score = fuzz.ratio(first_word_x, first_word_y)
-    if len(without_suffix_x) == len(without_suffix_y):
-        if first_score>90:
+    set_ws_x = set(without_suffix_x)
+    set_ws_y = set(without_suffix_y)
+    if len(set_ws_x) == len(set_ws_y):
+        if first_score>90 and first_word_x[0] == first_word_y[0]:# First letter equal
             return True
         else:
-            xyset = (set(without_suffix_x) & set(without_suffix_y))
+            xyset = set_ws_x & set_ws_y
             xyset.discard('s')
-            if xyset == set(without_suffix_x):
+            if xyset == set_ws_x:
                 return True
-    if first_score>90 and (first_word_y in unique_word):
-        return True
-            
-    if len(y_words)>1 and len(x_words)>1: # paired words must are first two of either names
-        y1,y2 = y_words[:2]
-        if (y1,y2) in pair_word and 'of' not in (y1,y2) and 's' not in (y1,y2):
-            for x1,x2 in pairwise(x_words):
-                if fuzz.ratio(x1,y1)> 90 and fuzz.ratio(x2,y2)> 90:
+    else:
+        if first_score>90 and (first_word_y in unique_word):
+            if first_word_x[0] == first_word_y[0]:# First letter equal
+                if set(x_words) == set_ws_x or set(y_words) == set_ws_y:
                     return True
-        x1,x2 = x_words[:2]
-        for y1,y2 in pairwise(y_words):
+                if set(x_words) - set_ws_x == set(y_words) - set_ws_y:
+                    return True
+        if len(without_suffix_x)>1 and len(without_suffix_y)>1: # paired words must are first two of either names
+            y1,y2 = y_words[:2]
+            x1,x2 = x_words[:2]
             if (y1,y2) in pair_word and 'of' not in (y1,y2) and 's' not in (y1,y2):
                 if fuzz.ratio(x1,y1)> 90 and fuzz.ratio(x2,y2)> 90:
-                    return True
+                    if set(x_words) == set_ws_x or set(y_words) == set_ws_y:
+                        return True
+                    if set(x_words) - set_ws_x == set(y_words) - set_ws_y:
+                        return True
             
 def unpacking(main_row):
     lst = []
