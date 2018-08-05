@@ -163,23 +163,21 @@ def match(x, y, x_words, y_words, without_suffix_x, without_suffix_y):
             xyset = set_ws_x & set_ws_y
             xyset.discard('s')
             if xyset == set_ws_x:
-                return True
+                if len(xyset) == 1 and list(xyset)[0] not in unique_word:
+                    if fuzz.token_set_ratio(x_words, y_words)>90:
+                        return True                    
+                else:
+                    return True
     else:
         if first_score>90 and (first_word_y in unique_word):
             if first_word_x[0] == first_word_y[0]:# First letter equal
-                if set(x_words) == set_ws_x or set(y_words) == set_ws_y:
-                    return True
-                if set(x_words) - set_ws_x == set(y_words) - set_ws_y:
-                    return True
+                return True
         if len(without_suffix_x)>1 and len(without_suffix_y)>1: # paired words must are first two of either names
             y1,y2 = y_words[:2]
             x1,x2 = x_words[:2]
             if (y1,y2) in pair_word and 'of' not in (y1,y2) and 's' not in (y1,y2):
                 if fuzz.ratio(x1,y1)> 90 and fuzz.ratio(x2,y2)> 90:
-                    if set(x_words) == set_ws_x or set(y_words) == set_ws_y:
-                        return True
-                    if set(x_words) - set_ws_x == set(y_words) - set_ws_y:
-                        return True
+                    return True
             
 def unpacking(main_row):
     lst = []
