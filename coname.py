@@ -30,7 +30,8 @@ def pairwise(iterable):
 def abbr_adj(name): # replace abbr to full
     for string, adj_string in abbr:
         name = re.sub('(?<!\w)'+string+'(?!\w)', 
-                        ' ' +adj_string, name, flags=re.IGNORECASE)
+                        ' ' +adj_string, name, 
+                        flags=re.IGNORECASE)
     return name.strip()                    
 
 def suffix_adj(name): # Remove suffix
@@ -87,9 +88,10 @@ abbr = [('Inc','Incorporated'),('Incorp','Incorporated'), ('Assn','Association')
         ('COMPANIES', 'Company'), ('Mort', 'Mortgage'), ('Thr','Through'), ('Sec', 'Securities'),
         ('BANCORPORATION', 'Banking Corporation'), ('RESOURCE', 'Resources'), ('Holding', 'Holdings'), ('Security', 'Securities'),
         ('ENTERPRISE','Enterprises'),('funding','fundings'),('system','systems'),('chem','chemical'),
-        ('SYS','systems'),('MFG','manufacturing'),('Prod','products'),('Product','products')]
+        ('SYS','systems'),('MFG','manufacturing'), ('Prod','products'), ('Product','products'), 
+        ('&','and')]
 suffix = ['Incorporated', 'Corporation', 'LLC', 'Company', 'Limited', 'trust', 'Company', 'Holdings', 
-        'Holding', 'Group', 'ENTERPRISES', 'international', 'and']
+        'Holding', 'Group', 'ENTERPRISES', 'international', 'and', 'gmbh']
 suffix_regex = '|'.join(suffix)
 
 base_ = pd.read_csv('base_name.csv').dropna()
@@ -190,7 +192,7 @@ def unpacking(main_row):
 wastime = dt.now()
 print(wastime)
 def main():
-    with ProcessPoolExecutor(max_workers=None) as e:
+    with ProcessPoolExecutor() as e:
         with open('__coname__.csv','w',newline='') as w:
             wr = csv.writer(w)
             seq = 0 + subset
