@@ -94,7 +94,7 @@ suffix = ['Incorporated', 'Corporation', 'LLC', 'Company', 'Limited', 'trust', '
         'Holding', 'Group', 'ENTERPRISES', 'international', 'and', 'gmbh']
 suffix_regex = '|'.join(suffix)
 
-base_ = pd.read_csv('base_name.csv').dropna()
+base_ = pd.read_csv('stocknames.csv').dropna()
 main_ = pd.read_csv(filename).dropna()
 # adjust abbreviations
 base_['abbr_name'] = base_[base_.columns[1]].map(abbr_adj)
