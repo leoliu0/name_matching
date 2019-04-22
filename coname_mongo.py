@@ -105,6 +105,7 @@ main_ = pd.read_csv(filename).dropna()
 
 main_.columns = ['idx','name']
 main_ = main_[~main_.idx.isin(processed)]
+print(f'processed {len(processed)}, still have {len(main_) - len(processed)} to go ...')
 
 bs_idx, bs_name = base_.columns
 # adjust abbreviations
