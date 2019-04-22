@@ -23,7 +23,7 @@ filename = parser.parse_args().input
 subset = int(parser.parse_args().subset)
 
 dbname = filename.split('.')[0]
-client = pymongo.MongoClient("mongodb+srv://leo:2222drop@leomon-bjfw3.mongodb.net/test?retryWrites=true")
+client = pymongo.MongoClient("mongodb+srv://leo:2222@leomon-bjfw3.mongodb.net/test?retryWrites=true")
 db = client[dbname]
 processed = [x['idx'] for x in db.name_match.find({},{'_id':0,'idx':1})]
 
@@ -216,7 +216,7 @@ def main():
                     for matched in result:
                         wr.writerow(matched)
                     db.name_match.insert_many(
-                        [{'idx':x[0],'name':x[1],bs_idx:x[2],bs_name:x[3]} for x in matched]
+                        [{'idx':x[0],'name':x[1],bs_idx:x[2],bs_name:x[3]} for x in result]
                         )
 if __name__ == '__main__':
     main()
