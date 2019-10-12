@@ -29,10 +29,10 @@ def pairwise(iterable):
 
 def abbr_adj(name): # replace abbr to full
     for string, adj_string in abbr:
-        name = re.sub('(?<!\w)'+string+'(?!\w)', 
-                        ' ' +adj_string, name, 
+        name = re.sub('(?<!\w)'+string+'(?!\w)',
+                        ' ' +adj_string, name,
                         flags=re.IGNORECASE)
-    return name.strip()                    
+    return name.strip()
 
 def suffix_adj(name): # Remove suffix
     for string in suffix:
@@ -82,19 +82,19 @@ def name_preprocessing(z):
     return z,words,without_suffix,two_,two_words,two_ws,three_,three_words,three_ws
 
 abbr = [('Inc','Incorporated'),('Incorp','Incorporated'), ('Assn','Association'),('intl', 'international'),
-        ('CORP', 'Corporation'), ('CO', 'Company'), ('LTD', 'Limited'), ('MOR', 'Mortgage'), 
+        ('CORP', 'Corporation'), ('CO', 'Company'), ('LTD', 'Limited'), ('MOR', 'Mortgage'),
         ('Banc', 'Banking Corporation'), ('THRU', 'Through'), ('COMM', 'Communication'),
         ('tech','technologies'),('technology','technologies'),('INDS','industries'),('industry','industries'),
         ('COMPANIES', 'Company'), ('Mort', 'Mortgage'), ('Thr','Through'), ('Sec', 'Securities'),
         ('BANCORPORATION', 'Banking Corporation'), ('RESOURCE', 'Resources'), ('Holding', 'Holdings'), ('Security', 'Securities'),
         ('ENTERPRISE','Enterprises'),('funding','fundings'),('system','systems'),('chem','chemical'),
-        ('SYS','systems'),('MFG','manufacturing'), ('Prod','products'), ('Product','products'), 
+        ('SYS','systems'),('MFG','manufacturing'), ('Prod','products'), ('Product','products'),
         ('&','and')]
-suffix = ['Incorporated', 'Corporation', 'LLC', 'Company', 'Limited', 'trust', 'Company', 'Holdings', 
+suffix = ['Incorporated', 'Corporation', 'LLC', 'Company', 'Limited', 'trust', 'Company', 'Holdings',
         'Holding', 'Group', 'ENTERPRISES', 'international', 'and', 'gmbh']
 suffix_regex = '|'.join(suffix)
 
-base_ = pd.read_csv('stocknames.csv').dropna()
+base_ = pd.read_csv('stocknames_mainclass.csv').dropna()
 main_ = pd.read_csv(filename).dropna()
 # adjust abbreviations
 base_['abbr_name'] = base_[base_.columns[1]].map(abbr_adj)
@@ -116,8 +116,8 @@ for gvkey, name, abbrev, disamb in base_.values:
     else:
         gvkey_single_dict[gvkey] = set(x)
         gvkey_pair_dict[gvkey] = set(pairwise(x))
-        
-        
+
+
 single_list = []
 pair_list = []
 for v in gvkey_single_dict.values():
@@ -148,11 +148,11 @@ def permutation(x,y):
             return True
         if three_x:
             if match(x, three_y, x_words, three_words_y, without_suffix_x, three_ws_y):
-                return True    
+                return True
 
 def match(x, y, x_words, y_words, without_suffix_x, without_suffix_y):
     score = fuzz.token_set_ratio(without_suffix_x,without_suffix_y)
-    if score < 94: 
+    if score < 94:
         return #low score discarded
     first_word_x, first_word_y = x_words[0], y_words[0]
     first_score = fuzz.ratio(first_word_x, first_word_y)
@@ -167,7 +167,7 @@ def match(x, y, x_words, y_words, without_suffix_x, without_suffix_y):
             if xyset == set_ws_x:
                 if len(xyset) == 1 and list(xyset)[0] not in unique_word:
                     if fuzz.token_set_ratio(x_words, y_words)>90:
-                        return True                    
+                        return True
                 else:
                     return True
     else:
@@ -180,7 +180,7 @@ def match(x, y, x_words, y_words, without_suffix_x, without_suffix_y):
             if (y1,y2) in pair_word and 'of' not in (y1,y2) and 's' not in (y1,y2):
                 if fuzz.ratio(x1,y1)> 90 and fuzz.ratio(x2,y2)> 90:
                     return True
-            
+
 def unpacking(main_row):
     lst = []
     main_index, main_name, main_abbr, main_disamb = main_row
