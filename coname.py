@@ -111,7 +111,7 @@ abbr = [('Inc', 'Incorporated'), ('Incorp', 'Incorporated'),
         ('funding', 'fundings'), ('system', 'systems'), ('chem', 'chemical'),
         ('SYS', 'systems'), ('MFG', 'manufacturing'), ('Prod', 'products'),
         ('Pharma', 'Pharm'),('Pharmaceu', 'Pharm'),('Pharmaceuti', 'Pharm'),
-        ('Pharmace', 'Pharm'),('Pharmaceut', 'Pharm'), ('Pharmaceutical', 'Pharm')
+        ('Pharmace', 'Pharm'),('Pharmaceut', 'Pharm'), ('Pharmaceutical', 'Pharm'),
         ('Product', 'products'), ('&', 'and')]
 suffix = [
     'Incorporated', 'Corporation', 'LLC', 'Company', 'Limited', 'trust',
