@@ -96,12 +96,14 @@ def name_preprocessing(z):
 
     return z, words, without_suffix, two_, two_words, two_ws, three_, three_words, three_ws
 
-
 abbr = [('Inc', 'Incorporated'), ('Incorp', 'Incorporated'),
-        ('Assn', 'Association'), ('intl', 'international'),
+        ('Assn', 'Association'),('Assoc', 'Association'),
+        ('intl', 'international'),('svcs','services'),('gbl','global'),
         ('CORP', 'Corporation'), ('CO', 'Company'), ('LTD', 'Limited'),
         ('MOR', 'Mortgage'), ('Banc', 'Banking Corporation'),
-        ('THRU', 'Through'), ('COMM', 'Communication'),
+        ('grp', 'group'),('cap','capital'),('FINL','financial'),
+        ('THRU', 'Through'), ('COMM', 'Communication'),('MGMT','Management'),
+        ('INVT', 'investment'),('INV', 'investment'),('PTNR','partner'),('ADVR','advisors'),
         ('tech', 'technologies'), ('technology', 'technologies'),
         ('INDS', 'industries'), ('industry', 'industries'),
         ('COMPANIES', 'Company'), ('Mort', 'Mortgage'), ('Thr', 'Through'),
@@ -112,7 +114,9 @@ abbr = [('Inc', 'Incorporated'), ('Incorp', 'Incorporated'),
         ('SYS', 'systems'), ('MFG', 'manufacturing'), ('Prod', 'products'),
         ('Pharma', 'Pharm'),('Pharmaceu', 'Pharm'),('Pharmaceuti', 'Pharm'),
         ('Pharmace', 'Pharm'),('Pharmaceut', 'Pharm'), ('Pharmaceutical', 'Pharm'),
-        ('Product', 'products'), ('&', 'and')]
+        ('Product', 'products'), ('&', 'and'),
+        ('L\.P','LP'),('L\.L\.P','LLP'),('S\.A','SA'),('S\.p\.A','SPA')]
+
 suffix = [
     'Incorporated', 'Corporation', 'LLC', 'Company', 'Limited', 'trust',
     'Company', 'Holdings', 'Holding', 'Group', 'ENTERPRISES', 'international',
