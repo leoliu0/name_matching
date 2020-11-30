@@ -1,10 +1,5 @@
-import argparse
-import csv
-import math
-import os
-import re
-import string
-import sys
+#!/usr/bin/python
+import argparse,csv,math,os,re,string,sys
 from collections import Counter, defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime as dt
