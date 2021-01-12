@@ -11,13 +11,6 @@ import pandas as pd
 from fuzzywuzzy import fuzz
 from nltk.tokenize import sent_tokenize
 
-parser = argparse.ArgumentParser()
-parser.add_argument("input")
-parser.add_argument("subset")
-filename = parser.parse_args().input
-subset = int(parser.parse_args().subset)
-
-
 def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2,s3), ..."
     a, b = tee(iterable)
@@ -93,12 +86,13 @@ def name_preprocessing(z):
 
 abbr = [('Inc', 'Incorporated'), ('Incorp', 'Incorporated'),
         ('Assn', 'Association'),('Assoc', 'Association'),
-        ('intl', 'international'),('svcs','services'),('gbl','global'),
+        ('intl', 'international'), ('gbl','global'),
         ('CORP', 'Corporation'), ('CO', 'Company'), ('LTD', 'Limited'),
         ('MOR', 'Mortgage'), ('Banc', 'Banking Corporation'),
         ('grp', 'group'),('cap','capital'),('FINL','financial'),
         ('THRU', 'Through'), ('COMM', 'Communication'),('MGMT','Management'),
-        ('INVT', 'investment'),('INV', 'investment'),('PTNR','partner'),('ADVR','advisors'),
+        ('INVT', 'investments'),('INV', 'investments'),('investment', 'investments'),
+        ('PTNR','partner'),('ADVR','advisors'),('laboratory','laboratories'),
         ('tech', 'technologies'), ('technology', 'technologies'),
         ('INDS', 'industries'), ('industry', 'industries'),
         ('COMPANIES', 'Company'), ('Mort', 'Mortgage'), ('Thr', 'Through'),
@@ -109,8 +103,10 @@ abbr = [('Inc', 'Incorporated'), ('Incorp', 'Incorporated'),
         ('SYS', 'systems'), ('MFG', 'manufacturing'), ('Prod', 'products'),
         ('Pharma', 'Pharm'),('Pharmaceu', 'Pharm'),('Pharmaceuti', 'Pharm'),
         ('Pharmace', 'Pharm'),('Pharmaceut', 'Pharm'), ('Pharmaceutical', 'Pharm'),
-        ('Product', 'products'), ('&', 'and'),
-        ('L\.P','LP'),('L\.L\.P','LLP'),('S\.A','SA'),('S\.p\.A','SPA')]
+        ('Product', 'products'), ('svcs','services'),('service','services'),
+        ('production','productions'),
+        ('&', 'and'), ('L\.P','LP'),('L\.L\.P','LLP'),('S\.A','SA'),('S\.p\.A','SPA'),
+        ('u s a','usa')]
 
 suffix = [
     'Incorporated', 'Corporation', 'LLC', 'Company', 'Limited', 'trust',
@@ -118,42 +114,6 @@ suffix = [
     'and', 'gmbh'
 ]
 suffix_regex = '|'.join(suffix)
-
-base_ = pd.read_csv('stocknames_mainclass.csv').dropna()
-main_ = pd.read_csv(filename).dropna()
-# adjust abbreviations
-base_['abbr_name'] = base_[base_.columns[1]].map(abbr_adj)
-main_['abbr_name'] = main_[main_.columns[1]].map(abbr_adj)
-# disambiguation
-base_['disambiguated'] = base_[base_.columns[1]].map(name_preprocessing)
-main_['disambiguated'] = main_[main_.columns[1]].map(name_preprocessing)
-
-# construct unique words list and unique pair words list
-gvkey_single_dict = dict()
-gvkey_pair_dict = dict()
-
-for gvkey, name, abbrev, disamb in base_.values:
-    x = re.split('\s+', remove_punc(abbrev.lower()))
-    if gvkey in gvkey_single_dict:
-        for x in name:
-            gvkey_single_dict[gvkey].add(x)
-            gvkey_pair_dict[gvkey] = set(
-                pairwise(x)) | gvkey_pair_dict[gvkey]  # Adding the set
-    else:
-        gvkey_single_dict[gvkey] = set(x)
-        gvkey_pair_dict[gvkey] = set(pairwise(x))
-
-single_list = []
-pair_list = []
-for v in gvkey_single_dict.values():
-    single_list.extend(list(v))
-for v in gvkey_pair_dict.values():
-    pair_list.extend(v)
-unique_word = [
-    word for word, n in Counter(single_list).most_common() if n <= 2
-]
-pair_word = [word for word, n in Counter(pair_list).most_common() if n <= 2]
-
 
 def permutation(x, y):
     x, x_words, without_suffix_x, two_x, two_words_x, two_ws_x, three_x, three_words_x, three_ws_x = x
@@ -226,11 +186,6 @@ def unpacking(main_row):
             lst.append([main_index, main_name, base_index, base_name])
     return (main_index, lst)
 
-
-wastime = dt.now()
-print(wastime)
-
-
 def main():
     with ProcessPoolExecutor() as e:
         with open('__coname__.csv', 'w', newline='') as w:
@@ -244,9 +199,49 @@ def main():
                 if result:
                     for matched in result:
                         wr.writerow(matched)
-
-
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input")
+    parser.add_argument("subset")
+    filename = parser.parse_args().input
+    subset = int(parser.parse_args().subset)
 
-print(dt.now(), (dt.now() - wastime).total_seconds() / 60)
+    base_ = pd.read_csv('stocknames_mainclass.csv').dropna()
+    main_ = pd.read_csv(filename).dropna()
+    # adjust abbreviations
+    base_['abbr_name'] = base_[base_.columns[1]].map(abbr_adj)
+    main_['abbr_name'] = main_[main_.columns[1]].map(abbr_adj)
+    # disambiguation
+    base_['disambiguated'] = base_[base_.columns[1]].map(name_preprocessing)
+    main_['disambiguated'] = main_[main_.columns[1]].map(name_preprocessing)
+
+    # construct unique words list and unique pair words list
+    gvkey_single_dict = dict()
+    gvkey_pair_dict = dict()
+
+    for gvkey, name, abbrev, disamb in base_.values:
+        x = re.split('\s+', remove_punc(abbrev.lower()))
+        if gvkey in gvkey_single_dict:
+            for x in name:
+                gvkey_single_dict[gvkey].add(x)
+                gvkey_pair_dict[gvkey] = set(
+                    pairwise(x)) | gvkey_pair_dict[gvkey]  # Adding the set
+        else:
+            gvkey_single_dict[gvkey] = set(x)
+            gvkey_pair_dict[gvkey] = set(pairwise(x))
+
+    single_list = []
+    pair_list = []
+    for v in gvkey_single_dict.values():
+        single_list.extend(list(v))
+    for v in gvkey_pair_dict.values():
+        pair_list.extend(v)
+    unique_word = [
+        word for word, n in Counter(single_list).most_common() if n <= 2
+    ]
+    pair_word = [word for word, n in Counter(pair_list).most_common() if n <= 2]
+
+    wastime = dt.now()
+    print(wastime)
+    main()
+    print(dt.now(), (dt.now() - wastime).total_seconds() / 60)
