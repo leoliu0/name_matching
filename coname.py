@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import argparse,csv,math,os,re,string,sys
 from collections import Counter, defaultdict
-from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import Pool
 from datetime import datetime as dt
 from itertools import *
 from unicodedata import normalize
@@ -84,7 +84,8 @@ def name_preprocessing(z):
 
     return z, words, without_suffix, two_, two_words, two_ws, three_, three_words, three_ws
 
-abbr = [('Inc', 'Incorporated'), ('Incorp', 'Incorporated'),
+abbr = [('the',''),('and',''),('of',''),('for',''),
+        ('Inc', 'Incorporated'), ('Incorp', 'Incorporated'),
         ('Assn', 'Association'),('Assoc', 'Association'),
         ('intl', 'international'), ('gbl','global'),
         ('CORP', 'Corporation'), ('CO', 'Company'), ('LTD', 'Limited'),
@@ -187,12 +188,12 @@ def unpacking(main_row):
     return (main_index, lst)
 
 def main():
-    with ProcessPoolExecutor() as e:
+    with Pool() as p:
         with open('__coname__.csv', 'w', newline='') as w:
             wr = csv.writer(w)
             seq = 0 + subset
             total_number = len(main_)
-            for index, result in e.map(unpacking,
+            for index, result in p.imap(unpacking,
                                        main_.loc[subset:, :].values):
                 seq += 1
                 print(f'{seq} out of {total_number}, {index}')
