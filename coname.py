@@ -111,7 +111,7 @@ abbr = [('the',''),('and',''),('of',''),('for',''),
 
 suffix = [
     'Incorporated', 'Corporation', 'LLC', 'Company', 'Limited', 'trust',
-    'Company', 'Holdings', 'Holding', 'Group', 'ENTERPRISES', 'international',
+    'Company', 'Holdings', 'Holding', 'Group', 'enterprises', 'international',
     'and', 'gmbh'
 ]
 suffix_regex = '|'.join(suffix)
