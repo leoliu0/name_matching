@@ -84,12 +84,15 @@ def name_preprocessing(z):
 
     return z, words, without_suffix, two_, two_words, two_ws, three_, three_words, three_ws
 
-abbr = [('the',''),('and',''),('of',''),('for',''),
-        ('Inc', 'Incorporated'), ('Incorp', 'Incorporated'),
+abbr = [('the',''),('and',''),('of',''),('for',''),('llc','llc'),
+        ('Inc', 'incorp'), ('Incorporated','incorp'),
+        ('CORP', 'incorp'),('corporation', 'incorp'),
+        ('corpor', 'incorp'),('corporat', 'incorp'),
+        ('corporate', 'incorp'),('corporatin', 'incorp'),
         ('Assn', 'Association'),('Assoc', 'Association'),
         ('intl', 'international'), ('gbl','global'),
-        ('CORP', 'Corporation'), ('CO', 'Company'), ('LTD', 'Limited'),
-        ('MOR', 'Mortgage'), ('Banc', 'Banking Corporation'),
+        ('CO', 'Company'), ('LTD', 'Limited'),
+        ('MOR', 'Mortgage'), ('Banc', 'BankCorp'),
         ('grp', 'group'),('cap','capital'),('FINL','financial'),
         ('THRU', 'Through'), ('COMM', 'Communication'),('MGMT','Management'),
         ('INVT', 'investments'),('INV', 'investments'),('investment', 'investments'),
@@ -97,7 +100,7 @@ abbr = [('the',''),('and',''),('of',''),('for',''),
         ('tech', 'technologies'), ('technology', 'technologies'),
         ('INDS', 'industries'), ('industry', 'industries'),
         ('COMPANIES', 'Company'), ('Mort', 'Mortgage'), ('Thr', 'Through'),
-        ('Sec', 'Securities'), ('BANCORPORATION', 'Banking Corporation'),
+        ('Sec', 'Securities'), ('BANCORPORATION', 'BankCorp'),
         ('RESOURCE', 'Resources'), ('Holding', 'Holdings'),
         ('Security', 'Securities'), ('ENTERPRISE', 'Enterprises'),
         ('funding', 'fundings'), ('system', 'systems'), ('chem', 'chemical'),
@@ -198,8 +201,7 @@ def main():
                 seq += 1
                 print(f'{seq} out of {total_number}, {index}')
                 if result:
-                    for matched in result:
-                        wr.writerow(matched)
+                    wr.writerows(result)
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("input")
