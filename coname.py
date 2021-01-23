@@ -197,7 +197,8 @@ def main():
             seq = 0 + subset
             total_number = len(main_)
             for index, result in p.imap(unpacking,
-                                       main_.loc[subset:, :].values):
+                                       main_.loc[subset:, :].values,
+                                        chunksize=1000):
                 seq += 1
                 print(f'{seq} out of {total_number}, {index}')
                 if result:
