@@ -12,13 +12,15 @@ from fuzzywuzzy import fuzz
 from nltk.tokenize import sent_tokenize
 
 abbr = [('the',''),('and',''),('of',''),('for',''),('llc','llc'),
-        ('Inc', 'incorp'), ('Incorporated','incorp'),
+        ('Inc', 'incorp'), ('Incorporated','incorp'),('CO', 'Company'),
         ('CORP', 'incorp'),('corporation', 'incorp'),
         ('corpor', 'incorp'),('corporat', 'incorp'),
         ('corporate', 'incorp'),('corporatin', 'incorp'),
+        ('LTD', 'limited'),('limit', 'limited'),('limite', 'limited'),
+        ('company incorp', 'incorp'),('incorp incorp', 'incorp'),
+        ('company limited', 'limited'),('incorp limited', 'limited'),
         ('Assn', 'Association'),('Assoc', 'Association'),
-        ('intl', 'international'), ('gbl','global'),('CO', 'Company'),
-        ('LTD', 'Limited'),('limit', 'Limited'),('limite', 'Limited'),
+        ('intl', 'international'), ('gbl','global'),
         ('MOR', 'Mortgage'), ('Banc', 'BankCorp'),
         ('grp', 'group'),('cap','capital'),('FINL','financial'),
         ('THRU', 'Through'), ('COMM', 'Communication'),('MGMT','Management'),
@@ -39,11 +41,9 @@ abbr = [('the',''),('and',''),('of',''),('for',''),('llc','llc'),
         ('&', 'and'), ('L\.P','LP'),('L\.L\.P','LLP'),('S\.A','SA'),('S\.p\.A','SPA'),
         ('u s a','usa')]
 
-suffix = [
-    'Incorporated', 'Corporation', 'LLC', 'Company', 'Limited', 'trust',
-    'Company', 'Holdings', 'Holding', 'Group', 'enterprises', 'international',
-    'and', 'gmbh'
-]
+suffix = set(['incorp', 'llc', 'company', 'limited', 'trust','lp','llp','sa','spa',
+          'usa', 'holdings', 'group', 'enterprises', 'international', 'gmbh',
+          'and','of'])
 suffix_regex = '|'.join(suffix)
 
 def abbr_adj(name):  # replace abbr to full
@@ -96,16 +96,16 @@ eng = set(json.load(open('words_dictionary.json')).keys())
 
 def match(a,b):
     if fuzz.token_set_ratio(a,b)<94:
-        return
+        return False
     good_y = set()
     pos_y = dict()
     # notice that x is CRSP firms (which is more standard) and y is target names
     x,y = removal_regex.sub('',b).strip().split(),removal_regex.sub('',a).strip().split()
     if len(x)==0:
-        return
+        return False
     if len(x)==1:
         if (x[0] in eng) or (len(x[0])<5):
-            return
+            return False
     for wx in x:
         match_wx = False
         for n,wy in enumerate(y,start=1):
@@ -119,14 +119,14 @@ def match(a,b):
                 match_wx = True
                 good_y.add(wy)
         if not match_wx: # every word in X must have a match in Y
-            return
-    bad_y = set(y) - set(good_y)
+            return False
+    bad_y = set(y) - set(good_y) - suffix
     if len(bad_y)==0: # no additional words in Y means good match
-        return
+        return True
     for bad_wy in bad_y:
         if pos_y[bad_wy]<=len(x): # all additional words in Y must appear after X
-            return
-    return 1
+            return False
+    return True
 
 def unpacking(main_row):
     lst = []
@@ -155,7 +155,7 @@ if __name__ == '__main__':
     parser.add_argument("input")
     args = parser.parse_args()
     filename = args.input
-
+    print('pre-processing... this could take a while...')
     base_ = pd.read_csv('stocknames_mainclass.csv').dropna()
     main_ = pd.read_csv(filename).dropna()
     # adjust abbreviations
@@ -166,6 +166,7 @@ if __name__ == '__main__':
     main_['disambiguated'] = main_[main_.columns[1]].map(name_preprocessing)
 
     wastime = dt.now()
-    print(wastime)
+    print(wastime,'start now ...')
     main()
-    print(dt.now(), (dt.now() - wastime).total_seconds() / 60)
+    print(dt.now(), 'finished, takes',
+          (dt.now() - wastime).total_seconds() / 60, 'minutes')
