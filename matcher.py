@@ -11,35 +11,54 @@ import pandas as pd
 from fuzzywuzzy import fuzz
 from nltk.tokenize import sent_tokenize
 
+cutoff=92
+
 abbr = [('the',''),('and',''),('of',''),('for',''),('llc','llc'),
-        ('Inc', 'incorp'), ('Incorporated','incorp'),('CO', 'Company'),
-        ('CORP', 'incorp'),('corporation', 'incorp'),
-        ('corpor', 'incorp'),('corporat', 'incorp'),
+        ('Inc', 'incorp'), ('Incorporated','incorp'),
+        ('CO', 'Company'), ('COS', 'Company'),('companies', 'Company'),
+        ('cor', 'incorp'),('CORP', 'incorp'),('corporation', 'incorp'),
+        ('corpor', 'incorp'),('corporat', 'incorp'),('corporat', 'incorp'),
         ('corporate', 'incorp'),('corporatin', 'incorp'),
         ('LTD', 'limited'),('limit', 'limited'),('limite', 'limited'),
         ('company incorp', 'incorp'),('incorp incorp', 'incorp'),
         ('company limited', 'limited'),('incorp limited', 'limited'),
         ('Assn', 'Association'),('Assoc', 'Association'),
-        ('intl', 'international'), ('gbl','global'),
-        ('MOR', 'Mortgage'), ('Banc', 'BankCorp'),
+        ('intl', 'international'), ('gbl','global'),('natl','national'),
+        ('int', 'international'),('univ','university'),
+        ('MOR', 'Mortgage'), ('Banc', 'BankCorp'),('bk', 'BankCorp'),
+        ('bancshares ', 'bankcorp'),('bankshares ', 'bankcorp'),
+        ('stores','store'),('brand','brands'),('gen','general'),
+        ('solutions ', 'solution'),('science','sciences'),('sci','sciences'),
+        ('work', 'works'),('device','devices'),('operation','operations'),
+        ('tool', 'tools'),('network','networks'),('material','materials'),
         ('grp', 'group'),('cap','capital'),('FINL','financial'),
         ('THRU', 'Through'), ('COMM', 'Communication'),('MGMT','Management'),
         ('INVT', 'investments'),('INV', 'investments'),('investment', 'investments'),
-        ('PTNR','partner'),('ADVR','advisors'),('laboratory','laboratories'),
+        ('PTNR','partner'),('ADVR','advisors'),
+        ('laboratory','laboratories'),('lab','laboratories'),('labs','laboratories'),
+        ('ins','insurance'),('insur','insurance'),('insure','insurance'),
         ('tech', 'technologies'), ('technology', 'technologies'),
         ('INDS', 'industries'), ('industry', 'industries'),
-        ('COMPANIES', 'Company'), ('Mort', 'Mortgage'), ('Thr', 'Through'),
+        ('IND', 'industries'),('res','research'),('dev','development'),
+        ('IP', ''), ('intellectual property', ''),('intellectual properties', ''),
+        ('property', 'properties'), ('Mort', 'Mortgage'), ('Thr', 'Through'),
         ('Sec', 'Securities'), ('BANCORPORATION', 'BankCorp'),
         ('RESOURCE', 'Resources'), ('Holding', 'Holdings'),
         ('Security', 'Securities'), ('ENTERPRISE', 'Enterprises'),
-        ('funding', 'fundings'), ('system', 'systems'), ('chem', 'chemical'),
+        ('funding', 'fundings'), ('networks', 'systems'), ('chem', 'chemical'),
         ('SYS', 'systems'), ('MFG', 'manufacturing'), ('Prod', 'products'),
         ('Pharma', 'Pharm'),('Pharmaceu', 'Pharm'),('Pharmaceuti', 'Pharm'),
         ('Pharmace', 'Pharm'),('Pharmaceut', 'Pharm'), ('Pharmaceutical', 'Pharm'),
         ('Product', 'products'), ('svcs','services'),('service','services'),
-        ('production','productions'),
+        ('production','productions'),('saving','savings'),('svgs','savings'),
+        ('ln','loan'), ('electronic','electronics'),('inst','institution'),
+        ('IBM','international business machines'),('motors','motor'),
+        ('machine','machines'),('machs','machines'),
+        ('american','america'),('AMER','america'),('AMERN','america'),
         ('&', 'and'), ('L\.P','LP'),('L\.L\.P','LLP'),('S\.A','SA'),('S\.p\.A','SPA'),
-        ('u s a','usa')]
+        ('u s a','united states'), ('usa','united states'),
+        ('u s','united states'),('i',''),('ii',''),('iii',''),('iv',''),('v',''),
+        ('vi',''),('vii',''),('viii',''),('ix',''),('x','')]
 
 suffix = set(['incorp', 'llc', 'company', 'limited', 'trust','lp','llp','sa','spa',
           'usa', 'holdings', 'group', 'enterprises', 'international', 'gmbh',
@@ -95,8 +114,6 @@ removal_regex = re.compile('|'.join(
 eng = set(json.load(open('words_dictionary.json')).keys())
 
 def match(a,b):
-    if fuzz.token_set_ratio(a,b)<94:
-        return False
     good_y = set()
     pos_y = dict()
     # notice that x is CRSP firms (which is more standard) and y is target names
@@ -118,10 +135,10 @@ def match(a,b):
             if fuzz.ratio(wx,wy)>threshold:
                 match_wx = True
                 good_y.add(wy)
-        if not match_wx: # every word in X must have a match in Y
-            return False
+        if not match_wx and (wx not in suffix): # every word in X must have a match in Y
+            return 0
     bad_y = set(y) - set(good_y) - suffix
-    if len(bad_y)==0: # no additional words in Y means good match
+    if len(bad_y)==0: # no additional words except for suffix in Y means good match
         return True
     for bad_wy in bad_y:
         if pos_y[bad_wy]<=len(x): # all additional words in Y must appear after X
@@ -130,15 +147,24 @@ def match(a,b):
 
 def unpacking(main_row):
     lst = []
-    main_index, main_name, main_abbr, main_disamb = main_row
-    for base_index, base_name, base_abbr, base_disamb in base_.values:
-        if match(main_disamb, base_disamb):
-            lst.append([main_index, main_name, base_index, base_name])
+    main_index, main_name, main_disamb, main_wosuf = main_row
+    for base_index, base_name, base_disamb, base_wosuf in base_.values:
+        if fuzz.token_set_ratio(main_wosuf,base_wosuf)>cutoff:
+            if match(main_disamb, base_disamb):
+                lst.append([main_index, main_name, base_index, base_name])
     return (main_index, lst)
+
+def match_test(a,b):
+    a,b = name_preprocessing(abbr_adj(a)),name_preprocessing(abbr_adj(b))
+    score = fuzz.token_set_ratio(suffix_adj(a),suffix_adj(b))
+    if score>cutoff:
+        return match(a,b)
+    else:
+        print('failed at cutoff',cutoff,' is',score)
 
 def main():
     with Pool() as p:
-        with open('__coname__.csv', 'w', newline='') as w:
+        with open(output, 'w', newline='') as w:
             wr = csv.writer(w)
             total_number = len(main_)
             seq = 0
@@ -153,17 +179,18 @@ def main():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("input")
+    parser.add_argument("-o")
     args = parser.parse_args()
+    output = args.o if args.o else '__matched__.csv'
     filename = args.input
     print('pre-processing... this could take a while...')
     base_ = pd.read_csv('stocknames_mainclass.csv').dropna()
     main_ = pd.read_csv(filename).dropna()
-    # adjust abbreviations
-    base_['abbr_name'] = base_[base_.columns[1]].map(abbr_adj)
-    main_['abbr_name'] = main_[main_.columns[1]].map(abbr_adj)
     # disambiguation
-    base_['disambiguated'] = base_[base_.columns[1]].map(name_preprocessing)
-    main_['disambiguated'] = main_[main_.columns[1]].map(name_preprocessing)
+    base_['disamb'] = base_[base_.columns[1]].map(name_preprocessing)
+    main_['disamb'] = main_[main_.columns[1]].map(name_preprocessing)
+    base_['wo_suffix'] = base_['disamb'].map(suffix_adj)
+    main_['wo_suffix'] = main_['disamb'].map(suffix_adj)
 
     wastime = dt.now()
     print(wastime,'start now ...')
