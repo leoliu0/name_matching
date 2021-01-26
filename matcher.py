@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import argparse,csv,math,os,re,string,sys,json
+import argparse,csv,math,os,re,string,sys,json,pkg_resources,pathlib
 from collections import Counter, defaultdict
 from multiprocessing import Pool
 from datetime import datetime as dt
@@ -76,6 +76,7 @@ abbr = [('the',''),('and',''),('of',''),('for',''),('llc','llc'),
         (r'ab$',''),(r'lm$','')
         ]
 
+
 common_abbr = set([x for _,x in abbr if x !=''])
 # for some abbreviations, we have to hard code it.
 hardcode = [('HP', 'HEWLETT PACKARD'),('IBM','international business machines'),
@@ -93,6 +94,18 @@ suffix = set(['incorp', 'llc', 'company', 'limited', 'trust','lp','llp','sa','sp
               ]
              )
 suffix_regex = '|'.join(suffix)
+
+removal_regex = re.compile('|'.join(
+    [r'\band\b',r'\bof\b',r'\bfor\b',r'\bholdings\b', r'\bholding\b', r'\bgroup\b',
+     r'\benterprises\b', r'\binternational\b',r'\bglobal\b']))
+
+def loc(f):
+    return os.path.join(pathlib.Path(__file__).parent.absolute(),f)
+
+eng = set(json.load(open('words_dictionary.json')).keys())
+eng = eng | set([x.lower().strip() for x in (open(loc('surname.txt')).readlines())])
+eng = eng | set([x.lower().strip() for x in (open(loc('firstname.txt')).readlines())])
+
 
 def abbr_adj(name):  # replace abbr to full
     for string, adj_string in abbr+hardcode:
@@ -131,12 +144,6 @@ def name_preprocessing(z):
     z = abbr_adj(z)
     return z.strip().lower()
 
-removal_regex = re.compile('|'.join(
-    [r'\band\b',r'\bof\b',r'\bfor\b',r'\bholdings\b', r'\bholding\b', r'\bgroup\b',
-     r'\benterprises\b', r'\binternational\b',r'\bglobal\b']))
-eng = set(json.load(open('words_dictionary.json')).keys())
-eng = eng | set([x.lower().strip() for x in (open('surname.txt').readlines())])
-eng = eng | set([x.lower().strip() for x in (open('firstname.txt').readlines())])
 
 def check_double(a,b):
     ''' account for double ('BALL & BALL CARBURETOR COMPANY','BALL CORP')'''
@@ -150,11 +157,14 @@ def check_double(a,b):
                         break
             else:
                 return False
+def remove_meaningless(s):
+    return removal_regex.sub('',s).strip()
+
 def match(a,b):
     good_y = set()
     pos_y = dict()
     # notice that x is CRSP firms (which is more standard) and y is target names
-    x,y = removal_regex.sub('',b).strip().split(),removal_regex.sub('',a).strip().split()
+    x,y = remove_meaningless(b).split(),remove_meaningless(a).split()
     if len(x)==0:
         return False
     if len(x)==1:
@@ -240,6 +250,7 @@ if __name__ == '__main__':
     main_['disamb'] = main_[main_.columns[1]].map(name_preprocessing)
     base_['wo_suffix'] = base_['disamb'].map(suffix_adj)
     main_['wo_suffix'] = main_['disamb'].map(suffix_adj)
+
 
     wastime = dt.now()
     print(wastime,'start now ...')
