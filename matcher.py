@@ -5,6 +5,7 @@ from multiprocessing import Pool
 from datetime import datetime as dt
 from itertools import *
 from unicodedata import normalize
+from tqdm import tqdm
 
 import pandas as pd
 
@@ -65,13 +66,15 @@ abbr = [('the',''),('and',''),('of',''),('for',''),('llc','llc'),
         ('&', 'and'), ('L\.P','LP'),('L\.L\.P','LLP'),('S\.A','SA'),('S\.p\.A','SPA'),
         ('u s a','usa'), ('usa','usa'), ('u s','usa'), ('us','usa'),
         # Japanese suffix
-        ('kk',''),('gk',''),('yk',''),('gmk',''),('gsk',''),('nk',''),('tk',''),
+        ('(?<!^)kk',''),('(?<!^)gk',''),('(?<!^)yk',''),('(?<!^)gmk',''),
+        ('(?<!^)gsk',''),('(?<!^)nk',''),('(?<!^)tk',''),
         # Germany suffix
-        ('ev',''),('rv',''),('kgaa',''),('gmbh co',''),('ag co',''),('se co',''),
-        ('gmbh',''),('ag',''),('se',''),('ug',''),
+        ('(?<!^)ev',''),('(?<!^)rv',''),('(?<!^)kgaa',''),('gmbh co',''),('(?<!^)ag co',''),('(?<!^)se co',''),
+        ('gmbh',''),('(?<!^)ag',''),('(?<!^)se',''),('(?<!^)ug',''),
         # French suffix
-        ('sep',''),('snc',''),('scs',''),('sca',''),('sci',''),('sarl',''),
-        ('eurl',''),('sa',''),('scop',''),(r'sas$',''),(r'sasu$',''),
+        ('(?<!^)sep',''),('(?<!^)snc',''),('(?<!^)scs',''),('(?<!^)sca',''),
+        ('(?<!^)sci',''),('(?<!^)sarl',''), ('(?<!^)eurl',''),('(?<!^)sa',''),
+        ('(?<!^)scop',''),(r'sas$',''),(r'sasu$',''),
         # Swedish suffix
         (r'ab$',''),(r'lm$','')
         ]
@@ -160,7 +163,12 @@ def check_double(a,b):
 def remove_meaningless(s):
     return removal_regex.sub('',s).strip()
 
+ban_list = ['organization','organization','academy','university','commission']
+
 def match(a,b):
+    for w in ban_list:
+        if w in b:
+            return False
     good_y = set()
     pos_y = dict()
     # notice that x is CRSP firms (which is more standard) and y is target names
@@ -191,8 +199,10 @@ def match(a,b):
         return False
 
     __good_y= set(good_y) - common_abbr - suffix
-    if len(__good_y)*len([w for q in __good_y for w in q if w in string.ascii_letters])>20:
-        return True
+
+    if len(__good_y - eng)>0:
+        if len(__good_y)*len([w for q in __good_y for w in q if w in string.ascii_letters])>20:
+            return True
     bad_y = set(y) - set(good_y) - suffix
     if len(bad_y)==0: # no additional words except for suffix in Y means good match
         return True
@@ -208,7 +218,7 @@ def unpacking(main_row):
         if fuzz.token_set_ratio(main_wosuf,base_wosuf)>cutoff:
             if match(main_disamb, base_disamb):
                 lst.append([main_index, main_name, base_index, base_name,
-                            fuzz.ratio(main_disamb, base_disamb)])
+                            fuzz.token_set_ratio(main_disamb, base_disamb)])
     return (main_index, lst)
 
 def match_test(a,b):
@@ -225,13 +235,9 @@ def main():
         with open(output, 'w', newline='') as w:
             wr = csv.writer(w)
             total_number = len(main_)
-            seq = 0
-            for index,result in p.imap(unpacking,
+            for result in tqdm(p.imap(unpacking,
                                  main_.values,
-                                 chunksize=100):
-                seq += 1
-                if seq % 100==0:
-                    print(f'{seq} out of {total_number}, {index}')
+                                 chunksize=100)):
                 if result:
                     wr.writerows(result)
 
@@ -250,7 +256,6 @@ if __name__ == '__main__':
     main_['disamb'] = main_[main_.columns[1]].map(name_preprocessing)
     base_['wo_suffix'] = base_['disamb'].map(suffix_adj)
     main_['wo_suffix'] = main_['disamb'].map(suffix_adj)
-
 
     wastime = dt.now()
     print(wastime,'start now ...')
