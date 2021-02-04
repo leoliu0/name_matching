@@ -163,11 +163,11 @@ def check_double(a,b):
 def remove_meaningless(s):
     return removal_regex.sub('',s).strip()
 
-ban_list = ['organization','organization','academy','university','commission']
+ban_list = ('organization','organization','academy','university','commission')
 
 def match(a,b):
     for w in ban_list:
-        if w in b:
+        if w in a:
             return False
     good_y = set()
     pos_y = dict()
