@@ -219,7 +219,7 @@ def unpacking(main_row):
             if match(main_disamb, base_disamb):
                 lst.append([main_index, main_name, base_index, base_name,
                             fuzz.token_set_ratio(main_disamb, base_disamb)])
-    return (main_index, lst)
+    return lst
 
 def match_test(a,b):
     a,b = name_preprocessing(a),name_preprocessing(b)
@@ -234,19 +234,20 @@ def main():
     with Pool() as p:
         with open(output, 'w', newline='') as w:
             wr = csv.writer(w)
-            total_number = len(main_)
-            for result in tqdm(p.imap(unpacking,
+            with tqdm(total=len(main_)) as pb:
+                for result in p.imap(unpacking,
                                  main_.values,
-                                 chunksize=100)):
-                if result:
-                    wr.writerows(result)
+                                 chunksize=100):
+                    if result:
+                        wr.writerows(result)
+                    pb.update()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("input")
     parser.add_argument("-o")
     args = parser.parse_args()
-    output = args.o if args.o else '__matched__.csv'
+    output = args.o if args.o else '__match__.csv'
     filename = args.input
     print('pre-processing... this could take a while...')
     base_ = pd.read_csv('stocknames.csv').dropna()
