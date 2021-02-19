@@ -187,7 +187,7 @@ def match(a,b):
                 threshold = 75
             else:
                 threshold = 89
-            if fuzz.ratio(wx,wy)>threshold:
+            if fuzz.ratio(wx,wy)>threshold and wx[0]==wy[0]: # first letter must match
                 match_wx = True
                 good_y.add(wy)
         if not match_wx and (wx not in suffix): # every word in X must have a match in Y
@@ -245,12 +245,14 @@ def main():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("input")
+    parser.add_argument("-b")
     parser.add_argument("-o")
     args = parser.parse_args()
     output = args.o if args.o else '__match__.csv'
     filename = args.input
     print('pre-processing... this could take a while...')
-    base_ = pd.read_csv('stocknames.csv').dropna()
+    basefile = args.b if args.b else 'stocknames.csv'
+    base_ = pd.read_csv(basefile).dropna()
     main_ = pd.read_csv(filename).dropna()
     # disambiguation
     base_['disamb'] = base_[base_.columns[1]].map(name_preprocessing)
