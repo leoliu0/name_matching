@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 import pandas as pd
 
-from fuzzywuzzy import fuzz
+from fuzzywuzzy.fuzz import *
 from nltk.tokenize import sent_tokenize
 
 cutoff=80
@@ -17,15 +17,15 @@ cutoff=80
 abbr1 = [
         # corporation related words and some uninformative words
         ('the',''),('and',''),('of',''),('for',''),
-        ('llc','llc'), ('Inc', 'incorp'), ('Incorporated','incorp'),
-        ('CO', 'company'), ('COS', 'Company'),('companies', 'Company'),
-        ('comapany', 'company'),
-        ('cor', 'incorp'),('CORP', 'incorp'),('corporation', 'incorp'),
-        ('coporation', 'incorp'), ('corpor', 'incorp'),
-        ('corporat', 'incorp'),('corporat', 'incorp'),
-        ('corporate', 'incorp'),('corporatin', 'incorp'),
+        ('llc','llc'), ('incorp', 'inc'), ('Incorporated','inc'),
+        ('CO', 'inc'), ('COS', 'inc'),('companies', 'inc'),
+        ('comapany', 'inc'),('company', 'inc'),
+        ('cor', 'inc'),('CORP', 'inc'),('corporation', 'inc'),
+        ('coporation', 'inc'), ('corpor', 'inc'),
+        ('corporat', 'inc'),('corporat', 'inc'),
+        ('corporate', 'inc'),('corporatin', 'inc'),
         ('LTD', 'limited'),('limit', 'limited'),('limite', 'limited'),
-        ('company incorp', 'incorp'),('incorp incorp', 'incorp'),
+        ('company incorp', 'inc'),('incorp incorp', 'inc'),
         ('company limited', 'limited'),('incorp limited', 'limited'),
         ('Assn', 'Association'),('Assoc', 'Association'),
         ('intl', 'international'),
@@ -71,8 +71,8 @@ abbr2 = [ # informative words
         ('property', 'properties'), ('Mort', 'Mortgage'), ('Thr', 'Through'),
         ('Sec', 'Securities'), ('BANCORPORATION', 'BankCorp'),
         ('RESOURCE', 'Resources'), ('Holding', 'Holdings'),
-        ('Security', 'Securities'), ('ENTERPRISE', 'Enterprises'),
-        ('funding', 'fundings'), ('networks', 'systems'), ('chem', 'chemical'),
+        ('Security', 'Securities'), ('ENTERPRISE', 'enterprises'),
+        ('funding', 'fundings'), ('chem', 'chemical'),
         ('SYS', 'systems'), ('MFG', 'manufacturing'), ('Prod', 'products'),
         ('Pharma', 'Pharm'),('Pharmaceu', 'Pharm'),('Pharmaceuti', 'Pharm'),
         ('Pharmace', 'Pharm'),('Pharmaceut', 'Pharm'), ('Pharmaceutical', 'Pharm'),
@@ -98,7 +98,7 @@ hardcode = [('HP', 'HEWLETT PACKARD'),('IBM','international business machines'),
             ('north  america philips','philips')]
 
 
-suffix = set(['incorp', 'llc', 'company', 'limited', 'trust','lp','llp','sa','spa',
+suffix = set(['inc', 'llc', 'company', 'limited', 'trust','lp','llp','sa','spa',
           'usa', 'holdings', 'group', 'enterprises', 'international', 'gmbh','kk'
           'and','of','north american',
             # Japanese suffix
@@ -108,11 +108,18 @@ suffix = set(['incorp', 'llc', 'company', 'limited', 'trust','lp','llp','sa','sp
 suffix_regex = '|'.join(suffix)
 
 def loc(f):
-    return os.path.join(pathlib.Path(__file__).parent.absolute(),f)
+    return pathlib.Path(__file__).parent.absolute()/f
+
+common_phrase = ['capital market']
+locations = [x.lower().strip() for x in (open(loc('locations.csv')).readlines())]
+common_phrase = [' '.join(sorted(x.split())) for x in common_phrase] + \
+            [' '.join(sorted(x.split())) for x in locations]
 
 eng = set(json.load(open('words_dictionary.json')).keys())
 eng = eng | set([x.lower().strip() for x in (open(loc('surname.txt')).readlines())])
 eng = eng | set([x.lower().strip() for x in (open(loc('firstname.txt')).readlines())])
+eng = eng | set(common_phrase) - set([''])
+
 
 def _abbr_adj(name,l):  # replace abbr to full
     for string, adj_string in l:
@@ -154,8 +161,9 @@ def name_preprocessing(z):
         z = z.replace(a,b+' ')
 
     #TODO: refactor the code to a function
-    for string, adj_string in [('i',''),('ii',''),('iii',''),('iv',''),('v',''),
-                         ('vi',''),('vii',''),('viii',''),('ix',''),('x','')]:
+    for string, adj_string in [('i',''),('ii',''),('iii',''),#('iv',''),('v',''),
+                         #  ('vi',''),('vii',''),('viii',''),('ix',''),('x','')
+                              ]:
         z = re.sub('(?<!\w)' + string + '(?!\w)',
                       ' ' + adj_string, z, flags=re.IGNORECASE)
     z = abbr_suffix_adj(z)
@@ -164,108 +172,144 @@ def name_preprocessing(z):
 def check_double(a,b):
     ''' account for double ('BALL & BALL CARBURETOR COMPANY','BALL CORP')'''
     for a1,a2 in combinations(a,2):
-        if fuzz.ratio(a1,a2)>89:
+        if ratio(a1,a2)>89:
             for b1,b2 in combinations(b,2):
-                if fuzz.ratio(b1,b2)>89:
-                    if fuzz.ratio(a1,b1)<=89:
+                if ratio(b1,b2)>89:
+                    if ratio(a1,b1)<=89:
                         return False
                     else:
                         break
             else:
                 return False
+
+location_remove = re.compile(r'\b|\b'.join([x.strip() for x in locations]))
 def remove_meaningless(name):
     for x in ['and', 'of','for','holdings','holding', 'group',
               'enterprises', 'international','global']:
         if not name.startswith(x):
             name = re.sub(r'\b'+x+r'\b','',name).strip()
+    name = location_remove.sub('',name)
     return name.strip()
 
-ban_list = ('organization','organization','academy','university','commission')
+ban_list = ('organization','organization','academy','university','commission',
+            'department','council','school','community','institute')
 
 def match(a,b,c,d):
     # part 1: high similarity scores treatment
-    if len(c.split()) > 2 or len(c.split()) > 2: # long names more forgiving
-        if fuzz.token_sort_ratio(c,d)>91:
-            return True
-    else:
-        if fuzz.token_sort_ratio(c,d)>96:
-            return True
+    x,y = remove_meaningless(b).split(),remove_meaningless(a).split()
     if not (set(a.split()) - suffix): # if a only has suffix left, bad ...
-        return False
+        return -1
     if not (set(b.split()) - suffix): # if b only has suffix left, bad ...
-        return False
-    if (fuzz.token_sort_ratio(a,b)>96) or (fuzz.ratio(sorted(a),sorted(b))==100):
-        return True
+        return -2
     for w in ban_list:
         if w in a:
-            return False
-    # part 2: low simiarity, try more cleaning ...
-    good_y = set()
-    has_bad_x = False
-    pos_y = dict()
-    # notice that x is CRSP firms (which is more standard) and y is target names
-    x,y = remove_meaningless(b).split(),remove_meaningless(a).split()
-    if len(x)==0:
-        return False
-    if len(x)==1:
-        if (x[0] in eng) or (len(x[0])<5):
-            return False
+            return -3
 
+    if ((token_sort_ratio(c,d)==100) or
+            (token_sort_ratio(a,b)==100) or (ratio(sorted(a),sorted(b))==100)):
+        return 1
+    # notice that x is CRSP firms (which is more standard) and y is target names
+    good_x, good_y = set(),set()
+    has_bad_x = False
+    pos_x, pos_y = dict(),dict()
     for m,wx in enumerate(x,start=1):
-        match_wx = False
+        pos_x[wx] = m
         for n,wy in enumerate(y,start=1):
             if wy not in pos_y:
                 pos_y[wy] = n
-            if n==1:
-                threshold = 92 # more strict if first word (letter 5 vs 6)
+            if len(x)==1 or len(y)==1:
+                threshold = 92 # more strict if very short name
             else:
                 threshold = 89
-            if (len(x) == len(y)) and (len(x)>4):
+            if ((len(x) == len(y)) and (len(x)>3)):
+                #  or (token_sort_ratio(c,d)>91)
+                        #  or (token_sort_ratio(a,b)>91)
+                        #  or (ratio(sorted(a),sorted(b))>98)):
+                # good match on entire name lower the threshold ...
                 threshold = 75
-            if ((fuzz.ratio(wx,wy)>threshold) and (wx[0]==wy[0]) # first letter must match
+            if ((ratio(wx,wy)>threshold) and (wx[0]==wy[0]) # first letter must match
                     and (wy[-1] not in '1234567890')): # last char is not a number
-                match_wx = True
                 good_y.add(wy)
-        if not match_wx and (wx not in suffix): # every word in X must have a match in Y
+                good_x.add(wx)
+        if (wx not in good_x) and (wx not in suffix): # every word in X must have a match in Y
             has_bad_x = True
-        if not match_wx and m==1: # First X word much match no matter what
+        if (wx not in good_x) and m==1: # First X word much match
             has_bad_x = True
+
+    # match on high scores
+    h_score= 94
+    if ((token_sort_ratio(c,d)>h_score) or (token_sort_ratio(a,b)>h_score)):
+        if has_bad_x == False:
+            return 2
+
+    # once removing meaningless, the remaining are not uninformative words
+    if len(x)==0:
+        return -4
+    if len(x)==1:
+        if (x[0] in eng) or (len(x[0])<5):
+            return -5
+    if len(x)==2:
+        if ' '.join(x[:2]) in eng:
+            return -12
+    if len(x)==3:
+        if ' '.join(x[:3]) in eng:
+            return -13
+
+    # part 2: low simiarity, try more cleaning ...
+
 
     if check_double(x,y) is False:
         return False
     if check_double(y,x) is False:
         return False
 
+    if x[0] not in good_x and x[0] not in ('global', 'international'):
+        return -14
     __good_y= good_y - common_abbr - suffix
+    __good_x= good_x - common_abbr - suffix
+    if len(__good_y)>1:
+        pos_y_nums = [pos_y[good_wy] for good_wy in __good_y]
+        pos_x_nums = [pos_x[good_wx] for good_wx in __good_x]
+        if min(pos_y_nums)>1 and (min(pos_x_nums)>1):
+            return -6
+        if (((max(pos_y_nums) - min(pos_y_nums)) > (len(__good_y)-1)) or
+                ((max(pos_x_nums) - min(pos_x_nums)) > (len(__good_x)-1))):
+            return -7
+
     #  if len(__good_y - eng)>0:
     if len(__good_y)*len([w for q in __good_y for w in q if w in string.ascii_letters])>20:
-        return True
+        if ' '.join(sorted(__good_y)) not in eng:
+            if y[0] in good_y:
+                return good_y
+            else: # first y is not matched ...
+                if y[0] in ('global','international'):
+                    return 5
     # match fail if has bad X and did not pass the multi-phrase test above ...
     if has_bad_x is True:
-        return False
+        return -8
 
     # check unique words in bad_y after removing suffix
     # (always keep first word as it is informative such as 'international' ...)
     bad_y = ((set(y) - suffix) | set([y[0]])) - good_y
     if len(bad_y)==0: # no additional words except for suffix in Y means good match
-        return 1
+        return 7
     for bad_wy in bad_y:
         if pos_y[bad_wy]<=len(x): # all additional words in Y must appear after X
-            return False
+            return -9
 
     remaining_x = set(x) - common_abbr - suffix
     if not remaining_x: # if nothing left in x
-        return False
+        return -10
     if len(remaining_x)==1: # if after remove things, the x is a letter, bad match
         remaining_wx = next(iter(remaining_x))
         if len(remaining_wx)==1: # or remaining_wx in eng:
-            return False
-    return True
+            return -11
+    return 6
 
 def match_test(a,b):
     c,d = name_preprocessing(a),name_preprocessing(b)
     a,b = disamb(c),disamb(d)
-    score = fuzz.token_set_ratio(a,b)
+    score = token_set_ratio(a,b)
     print(a,'  |||||  ',b)
     if score>cutoff:
         return match(a,b,c,d)
@@ -276,10 +320,10 @@ def unpacking(main_row):
     lst = []
     main_index, main_name, main_pre, main_disamb= main_row
     for base_index, base_name, base_pre, base_disamb in base_.values:
-        if fuzz.token_set_ratio(main_disamb,base_disamb)>cutoff:
-            if match(main_disamb, base_disamb, main_pre, base_pre):
+        if token_set_ratio(main_disamb,base_disamb)>cutoff:
+            if match(main_disamb, base_disamb, main_pre, base_pre)>0:
                 lst.append([main_index, main_name, base_index, base_name,
-                            fuzz.token_set_ratio(main_disamb, base_disamb)])
+                            token_sort_ratio(main_disamb, base_disamb)])
     return lst
 
 def main():
