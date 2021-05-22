@@ -1,3 +1,25 @@
+import functools
+import re
+
+
+def _abbr_adj(name, l):  # replace abbr to full
+    for string, adj_string in l:
+        if '(?' in string:
+            name = re.sub(string + r'(?!\w)',
+                          ' ' + adj_string,
+                          name,
+                          flags=re.IGNORECASE).replace('  ', ' ').strip()
+        else:
+            name = re.sub(r'(?<!\w)' + string + r'(?!\w)',
+                          ' ' + adj_string,
+                          name,
+                          flags=re.IGNORECASE).replace('  ', ' ').strip()
+        if adj_string.strip():
+            name = re.sub(r'\b' + adj_string + '\s+' + adj_string + r'\b',
+                          adj_string, name)
+    return name.replace('  ', ' ').strip().lower()
+
+
 abbr1 = [
     # corporation related words and some uninformative words
     ('the', ''),
@@ -263,3 +285,9 @@ suffix = set([
     'Ka\w+ Kaisha',
     'aktieng\w+'
 ])
+
+abbr = abbr1 + abbr2
+
+abbr_adj = functools.partial(_abbr_adj, l=hardcode + abbr)
+abbr_suffix_adj = functools.partial(_abbr_adj, l=hardcode + abbr1)
+abbr_extra_adj = functools.partial(_abbr_adj, l=hardcode + abbr2)

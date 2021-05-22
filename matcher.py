@@ -1,7 +1,6 @@
 #!/usr/bin/python
 import argparse
 import csv
-import functools
 import json
 import math
 import os
@@ -22,11 +21,10 @@ from Levenshtein import jaro_winkler
 from nltk import ngrams
 from nltk.tokenize import sent_tokenize
 from tqdm import tqdm
-from _abbr import abbr1, abbr2, hardcode, suffix
+from _abbr import *
+from _name_pre import name_preprocessing
 
 cutoff = 50
-
-abbr = abbr1 + abbr2
 
 
 def loc(f):
@@ -52,83 +50,11 @@ eng = eng | set(common_phrase) - set([''])
 common_abbr = set([x for _, x in abbr1 if x != ''])
 common_abbr12 = set([x for _, x in abbr if x != '']) | eng | suffix
 
-
-def _abbr_adj(name, l):  # replace abbr to full
-    for string, adj_string in l:
-        if '(?' in string:
-            name = re.sub(string + r'(?!\w)',
-                          ' ' + adj_string,
-                          name,
-                          flags=re.IGNORECASE).replace('  ', ' ').strip()
-        else:
-            name = re.sub(r'(?<!\w)' + string + r'(?!\w)',
-                          ' ' + adj_string,
-                          name,
-                          flags=re.IGNORECASE).replace('  ', ' ').strip()
-        if adj_string.strip():
-            name = re.sub(r'\b' + adj_string + '\s+' + adj_string + r'\b',
-                          adj_string, name)
-    return name.replace('  ', ' ').strip().lower()
-
-
-abbr_adj = functools.partial(_abbr_adj, l=hardcode + abbr)
-abbr_suffix_adj = functools.partial(_abbr_adj, l=hardcode + abbr1)
-abbr_extra_adj = functools.partial(_abbr_adj, l=hardcode + abbr2)
-
 __remove_suffix = re.compile(r'\b' + r'\b|\b'.join(suffix) + r'\b')
 
 
 def remove_suffix(name):  # Remove suffix
     return __remove_suffix.sub('', name).strip()
-
-
-names = set([x.strip() for x in (open(loc('names_decode.csv')).readlines())])
-names = names | set([x[0] for x in hardcode])
-# names from https://github.com/philipperemy/name-dataset
-__w_3_plus = re.compile('\w{3,}')
-
-
-def name_preprocessing(z):
-    z = z.lower()
-    z = z.replace('-redh', '').replace('-old', '').replace('-new', '')
-    z = z.split('-pre')[0].split('-adr')[0].split('division of')[-1].split(
-        'known as')[-1].split('-consolidated')[0]
-    z = re.sub(r'(?=\w+)our\b', r'or', z)
-    z = re.sub(r'(?=\w+)tt\b', r't', z)
-    #  z = re.sub(r'(?=(\w+))([a-zA-Z])\2?',r'\2',z)
-    z = re.sub(r'(?=\w+)er\b', r'ers', z)  # to not match e.g. glove vs glover
-    z = z.replace('`', '').replace('& company', '').replace('& companies', '')
-    z = re.sub(r'\bco\.? inc\b', r'inc', z)
-    z = re.sub(r'\bco\.? ltd\b', r'inc', z)
-    z = re.sub(r'\bthe\b', '', z)
-    z = ' '.join(re.findall(r'[\w\d]+', z))
-    # combining single words...
-    a = ''.join(re.findall(r'\b\w\s\b', z))
-    if a:
-        b = a.replace(' ', '')
-        z = z.replace(a, b + ' ')
-
-    #TODO: refactor the code to a function
-    for string, adj_string in [
-        ('i', ''),
-        ('ii', ''),
-        ('iii', ''),  #('iv',''),('v',''),
-            #  ('vi',''),('vii',''),('viii',''),('ix',''),('x','')
-    ]:
-        z = re.sub('(?<!\w)' + string + '(?!\w)',
-                   ' ' + adj_string,
-                   z,
-                   flags=re.IGNORECASE)
-    #  z = abbr_suffix_adj(z)
-    # remove people's name
-    if len(z.split()) > 1:
-        for w in __w_3_plus.findall(z):
-            if w not in names:
-                break
-    else:
-        return
-    z = abbr_adj(z)
-    return z.strip().lower()
 
 
 def check_double(a, b):
@@ -162,13 +88,16 @@ def _has_location(name):
 
 
 ban_list = ('organization', 'organization', 'academy', 'university', 'agency',
-            'commission', 'council', 'school', 'community', 'institute',
-            'church', 'league', '800')
+            'union', '21st', 'commission', 'council', 'school', 'community',
+            'institute', 'federation', 'nations', 'association', 'church',
+            'society', 'league', '800', '24', 'great america')
 
 __w_plus = re.compile('[a-z]+')
 intl = ('global', 'international', 'worldwide', 'national')
 too_general = ('and', 'of', 'for', 'holdings', 'holding', 'group',
                'enterprises', 'international', 'global')
+
+na = set(['north', 'america', 'great']) | set(intl) | set(too_general)
 
 
 def match(a, b):
@@ -181,13 +110,10 @@ def match(a, b):
         return -23
     _a = set(a.split()) - suffix
     _b = set(b.split()) - suffix
-    if not set(_a):  # if a only has suffix left, bad ...
+    if not (set(_a) - na):  # if a only has suffix left, bad ...
         return -1
-    if not set(_b):  # if b only has suffix left, bad ...
+    if not (set(_a) - na):  # if b only has suffix left, bad ...
         return -2
-    for w in ban_list:
-        if w in a:
-            return -3
 
     if _has_location(a) and _has_location(b):
         if token_sort_ratio(a, b) > 95:
@@ -200,7 +126,15 @@ def match(a, b):
             if c in too_general and d in too_general:
                 return -21
             else:
-                return 1
+                if len(x) >= 2 and len(y) >= 2:
+                    if x[1][:3] == y[1][:3]:
+                        return 1
+                else:
+                    return 1
+
+    for w in ban_list:
+        if w in a:
+            return -3
     # notice that x is CRSP firms (which is more standard) and y is target names
     good_x, good_y = set(), set()
     has_bad_x = False
@@ -247,7 +181,8 @@ def match(a, b):
     #  if ((token_sort_ratio(c,d)>h_score) or (token_sort_ratio(a,b)>h_score)):
     if ((token_sort_ratio(c, d) > h_score)):
         if has_bad_x == False:
-            return 2
+            if a[0] == b[0]:
+                return 2
 
     # once removing meaningless, the remaining are not uninformative words
     if len(x) == 0 or len(y) == 0:
@@ -289,7 +224,8 @@ def match(a, b):
 
         if x[0] in good_x and y[0] in good_y and x[0] not in eng and y[
                 0] not in eng:
-            return 10
+            if a[:3] == b[:3]:
+                return 10
 
     __good_y = good_y - common_abbr - suffix
     __good_x = good_x - common_abbr - suffix
@@ -314,17 +250,12 @@ def match(a, b):
                                  (score_x[2] > 89) and y[0] not in eng)):
                         return 4
                     else:  # first y is not matched ... match them if first word is global
-                        if y[0] in intl and score_x[1] > 89:
-                            return 5
-
-    if x[0] not in good_x and x[0] not in intl:
-        if len(x[0]) >= 5 and len(y[0]) >= 5:
-            if len(x[0]) == len(y[0]):
-                if x[0][:5] != y[0][:5]:
-                    if x[0][-5:] == y[0][-5:]:
-                        if jaro_winkler(x[0], y[0]) > 0.93:
-                            if x[0][0] == y[0][0]:
-                                return 14
+                        if y[0] in intl and score_x[1] > 93:
+                            if has_bad_x == True:
+                                if y[1][:3] == x[0][:3]:
+                                    return 5
+                            else:
+                                return 55
 
     _x = set(x) - suffix
     _y = set(y) - suffix
@@ -342,7 +273,11 @@ def match(a, b):
                 if jaro_winkler(x[0], y[0]) > 0.97 and jaro_winkler(
                         x[1], y[1]) > 0.94:
                     if x[0] not in intl and y[1] not in intl:
-                        return 9
+                        if has_bad_x == True:
+                            if len(_y - good_y) == 0:
+                                return 91
+                        else:
+                            return 9
             else:
                 return -9
         else:
@@ -362,7 +297,7 @@ def match(a, b):
                     if abs(len(x[0]) - len(y[0])) <= 1:
                         return 12
             if x[0][-5:] == y[0][-5:]:
-                if x[0][:2] == y[0][:2]:
+                if x[0][:3] == y[0][:3]:
                     if abs(len(x[0]) - len(y[0])) <= 1:
                         return 13
 
@@ -393,8 +328,8 @@ def match_test(x, y):
         #  print(a, '  |||||  ', b)
         if score > cutoff:
             return match(a, b)
-        else:
-            print('failed at cutoff', cutoff, ' is', score)
+        #  else:
+        #  print('failed at cutoff', cutoff, ' is', score)
 
 
 def unpacking(main_row):
