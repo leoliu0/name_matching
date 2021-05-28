@@ -88,9 +88,9 @@ def _has_location(name):
 
 
 ban_list = ('organization', 'organization', 'academy', 'university', 'agency',
-            'union', '21st', 'commission', 'council', 'school', 'community',
-            'institute', 'federation', 'nations', 'association', 'church',
-            'society', 'league', '800', '24', 'great america')
+            'republic', 'union', '21st', 'commission', 'council', 'school',
+            'community', 'institute', 'federation', 'nations', 'association',
+            'church', 'society', 'league', '800', '24', 'great america')
 
 __w_plus = re.compile('[a-z]+')
 intl = ('global', 'international', 'worldwide', 'national')
