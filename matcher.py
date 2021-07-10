@@ -2,7 +2,6 @@
 import argparse
 import csv
 import json
-import math
 import os
 import pathlib
 import re
@@ -11,7 +10,7 @@ import sys
 from collections import Counter, defaultdict
 from datetime import datetime as dt
 from itertools import *
-from multiprocessing import Pool
+from multiprocessing import Pool,cpu_count
 from unicodedata import normalize
 
 import pandas as pd
@@ -21,12 +20,13 @@ from Levenshtein import jaro_winkler
 from nltk import ngrams
 from nltk.tokenize import sent_tokenize
 from tqdm import tqdm
-from _abbr import *
-from _name_pre import name_preprocessing
+from utils._abbr import *
+from utils._name_pre import name_preprocessing
 
 cutoff = 50
 
-
+if __name__ != '__main__':
+    sys.exit(0)
 def loc(f):
     return pathlib.Path(__file__).parent.absolute() / f
 
@@ -346,7 +346,7 @@ def unpacking(main_row):
 
 
 def main():
-    with Pool(70) as p:
+    with Pool(cpu_count()-1) as p:
         with open(output, 'w', newline='') as w:
             wr = csv.writer(w)
             with tqdm(total=len(main_)) as pb:
@@ -356,30 +356,29 @@ def main():
                     pb.update()
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("input")
-    parser.add_argument("-b")
-    parser.add_argument("-o")
-    args = parser.parse_args()
-    output = args.o if args.o else '__match__.csv'
-    filename = args.input
-    print('pre-processing... this could take a while...')
-    basefile = args.b if args.b else 'stocknames.csv'
-    base_ = pd.read_csv(basefile).dropna()
-    main_ = pd.read_csv(filename).dropna()
-    # disambiguation
-    base_['pre_proc'] = base_[base_.columns[1]].map(name_preprocessing)
-    main_['pre_proc'] = main_[main_.columns[1]].map(name_preprocessing)
-    base_ = base_.dropna()
-    main_ = main_.dropna()
-    base_['nosuffix'] = base_['pre_proc'].map(remove_suffix)
-    main_['nosuffix'] = main_['pre_proc'].map(remove_suffix)
-    base_ = base_.dropna()
-    main_ = main_.dropna()
+parser = argparse.ArgumentParser()
+parser.add_argument("input")
+parser.add_argument("-b")
+parser.add_argument("-o")
+args = parser.parse_args()
+output = args.o if args.o else '__match__.csv'
+filename = args.input
+print('pre-processing... this could take a while...')
+basefile = args.b if args.b else 'stocknames.csv'
+base_ = pd.read_csv(basefile).dropna()
+main_ = pd.read_csv(filename).dropna()
+# disambiguation
+base_['pre_proc'] = base_[base_.columns[1]].map(name_preprocessing)
+main_['pre_proc'] = main_[main_.columns[1]].map(name_preprocessing)
+base_ = base_.dropna()
+main_ = main_.dropna()
+base_['nosuffix'] = base_['pre_proc'].map(remove_suffix)
+main_['nosuffix'] = main_['pre_proc'].map(remove_suffix)
+base_ = base_.dropna()
+main_ = main_.dropna()
 
-    wastime = dt.now()
-    print(wastime, 'start now ...')
-    main()
-    print(dt.now(), 'finished, takes',
-          (dt.now() - wastime).total_seconds() / 60, 'minutes')
+wastime = dt.now()
+print(wastime, 'start now ...')
+main()
+print(dt.now(), 'finished, takes',
+      (dt.now() - wastime).total_seconds() / 60, 'minutes')
