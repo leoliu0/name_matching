@@ -10,7 +10,7 @@ import sys
 from collections import Counter, defaultdict
 from datetime import datetime as dt
 from itertools import *
-from multiprocessing import Pool,cpu_count
+from multiprocessing import Pool, cpu_count
 from unicodedata import normalize
 
 import pandas as pd
@@ -25,8 +25,7 @@ from utils._name_pre import name_preprocessing
 
 cutoff = 50
 
-if __name__ != '__main__':
-    sys.exit(0)
+
 def loc(f):
     return pathlib.Path(__file__).parent.absolute() / f
 
@@ -38,7 +37,7 @@ locations = [
     (open(loc('locations.csv')).readlines())
 ]
 common_phrase = [' '.join(sorted(x.split())) for x in common_phrase] + \
-            [' '.join(sorted(x.split())) for x in locations]
+        [' '.join(sorted(x.split())) for x in locations]
 
 eng = set(json.load(open('words_dictionary.json')).keys())
 eng = eng | set(
@@ -84,8 +83,9 @@ def _has_location(name):
     #  if not name.startswith(x):
     #  name = re.sub(r'\b'+x+r'\b','',name).strip()
     return location_remove.search(name)
-    #  return name.strip()
 
+
+#  return name.strip()
 
 ban_list = ('organization', 'organization', 'academy', 'university', 'agency',
             'republic', 'union', '21st', 'commission', 'council', 'school',
@@ -120,7 +120,9 @@ def match(a, b):
             return 21
         else:
             return -22
-
+    if a.replace(' ', '') == b.replace(' ', ''):
+        if len(a) > 8:
+            return 1
     if (token_sort_ratio(a, b) == 100) or (ratio(sorted(c), sorted(d)) == 100):
         if a[:3] == b[:3]:
             if c in too_general and d in too_general:
@@ -244,11 +246,12 @@ def match(a, b):
                      == (1 + max(pos_good_y) - min(pos_good_y)))
                         and (len(pos_good_x)
                              == (1 + max(pos_good_x) - min(pos_good_x)))):
-
-                    if (y[0] in good_y
-                            and ((score_x[1] > 89) and
-                                 (score_x[2] > 89) and y[0] not in eng)):
-                        return 4
+                    if (y[0] in good_y) and (y[0] not in eng):
+                        if (score_x[1] > 89) and len(score_x) == 1:
+                            return 4
+                        elif len(score_x) > 1:
+                            if (score_x[1] > 89 and score_x[2] > 89):
+                                return 4
                     else:  # first y is not matched ... match them if first word is global
                         if y[0] in intl and score_x[1] > 93:
                             if has_bad_x == True:
@@ -346,7 +349,7 @@ def unpacking(main_row):
 
 
 def main():
-    with Pool(cpu_count()-1) as p:
+    with Pool(cpu_count() - 1) as p:
         with open(output, 'w', newline='') as w:
             wr = csv.writer(w)
             with tqdm(total=len(main_)) as pb:
@@ -356,29 +359,30 @@ def main():
                     pb.update()
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("input")
-parser.add_argument("-b")
-parser.add_argument("-o")
-args = parser.parse_args()
-output = args.o if args.o else '__match__.csv'
-filename = args.input
-print('pre-processing... this could take a while...')
-basefile = args.b if args.b else 'stocknames.csv'
-base_ = pd.read_csv(basefile).dropna()
-main_ = pd.read_csv(filename).dropna()
-# disambiguation
-base_['pre_proc'] = base_[base_.columns[1]].map(name_preprocessing)
-main_['pre_proc'] = main_[main_.columns[1]].map(name_preprocessing)
-base_ = base_.dropna()
-main_ = main_.dropna()
-base_['nosuffix'] = base_['pre_proc'].map(remove_suffix)
-main_['nosuffix'] = main_['pre_proc'].map(remove_suffix)
-base_ = base_.dropna()
-main_ = main_.dropna()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input")
+    parser.add_argument("-b")
+    parser.add_argument("-o")
+    args = parser.parse_args()
+    output = args.o if args.o else '__match__.csv'
+    filename = args.input
+    print('pre-processing... this could take a while...')
+    basefile = args.b if args.b else 'stocknames.csv'
+    base_ = pd.read_csv(basefile).dropna()
+    main_ = pd.read_csv(filename).dropna()
+    # disambiguation
+    base_['pre_proc'] = base_[base_.columns[1]].map(name_preprocessing)
+    main_['pre_proc'] = main_[main_.columns[1]].map(name_preprocessing)
+    base_ = base_.dropna()
+    main_ = main_.dropna()
+    base_['nosuffix'] = base_['pre_proc'].map(remove_suffix)
+    main_['nosuffix'] = main_['pre_proc'].map(remove_suffix)
+    base_ = base_.dropna()
+    main_ = main_.dropna()
 
-wastime = dt.now()
-print(wastime, 'start now ...')
-main()
-print(dt.now(), 'finished, takes',
-      (dt.now() - wastime).total_seconds() / 60, 'minutes')
+    wastime = dt.now()
+    print(wastime, 'start now ...')
+    main()
+    print(dt.now(), 'finished, takes',
+          (dt.now() - wastime).total_seconds() / 60, 'minutes')
