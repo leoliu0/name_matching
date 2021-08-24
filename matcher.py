@@ -19,7 +19,7 @@ from fuzzywuzzy.fuzz import *
 from Levenshtein import jaro_winkler
 from nltk import ngrams
 from nltk.tokenize import sent_tokenize
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from utils._abbr import *
 from utils._name_pre import name_preprocessing
 
@@ -352,11 +352,10 @@ def main():
     with Pool(cpu_count() - 1) as p:
         with open(output, 'w', newline='') as w:
             wr = csv.writer(w)
-            with tqdm(total=len(main_)) as pb:
-                for result in p.imap(unpacking, main_.values, chunksize=100):
+            for result in tqdm(p.imap(unpacking, main_.values,
+                            chunksize=100),total=len(main_)):
                     if result:
                         wr.writerows(result)
-                    pb.update()
 
 
 if __name__ == '__main__':
