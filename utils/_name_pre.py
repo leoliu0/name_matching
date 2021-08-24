@@ -11,7 +11,7 @@ __w_3_plus = re.compile('\w{3,}')
 __w_ = re.compile('\w+')
 
 names = set([x.strip() for x in (open(loc('names_decode.csv')).readlines())])
-names = names | set([x[0] for x in hardcode])
+names = names | set(['ford'])
 # names from https://github.com/philipperemy/name-dataset
 
 
@@ -57,9 +57,13 @@ def name_preprocessing(z):
     if len(ws) > 1:
         for w in ws:
             if w in names and len(w) > 1:
+                print(w)
                 counter += 1
     z = abbr_adj(z)
 
+    print(set([b for a, b in abbr if b != '']))
+    print(set(ws))
+    print(counter)
     if len(set([b for a, b in abbr if b != '']) & set(ws)) == 0:
         if counter >= 2:
             return
