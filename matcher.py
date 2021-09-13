@@ -15,7 +15,8 @@ from unicodedata import normalize
 
 import pandas as pd
 import pkg_resources
-from fuzzywuzzy.fuzz import *
+# from fuzzywuzzy.fuzz import *
+from rapidfuzz.fuzz import *
 from Levenshtein import jaro_winkler
 from nltk import ngrams
 from nltk.tokenize import sent_tokenize
