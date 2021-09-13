@@ -1,0 +1,4 @@
+rapidfuzz
+fuzzywuzzy
+pandas
+numpy
