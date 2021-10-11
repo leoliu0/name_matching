@@ -51,14 +51,13 @@ def name_preprocessing(z):
                    ' ' + adj_string,
                    z,
                    flags=re.IGNORECASE)
+    z = abbr_adj(z)
     ws = __w_.findall(z)
     counter = 0
-
     if len(ws) > 1:
         for w in ws:
             if w in names and len(w) > 1:
                 counter += 1
-    z = abbr_adj(z)
 
     if len(set([b for a, b in abbr if b != '']) & set(ws)) == 0:
         if counter >= 2:
