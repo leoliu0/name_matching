@@ -103,6 +103,9 @@ na = set(['north', 'america', 'great']) | set(intl) | set(too_general)
 
 def match(a, b):
     # part 1: high similarity scores treatment
+    if 'matchit' in a and 'matchit' in b:
+        if a.split('matchit')[0].split()[-1]==b.split('matchit')[0].split()[-1]: 
+            return 16
     c, d = remove_suffix(a), remove_suffix(b)
     #  x, y = remove_meaningless(b).split(), remove_meaningless(a).split()
     x, y = b.split(), a.split()
@@ -284,7 +287,7 @@ def match(a, b):
                             return 9
             else:
                 return -9
-        else:
+        else: 
             return -99
 
     if len(_x) == 1 and len(_y) == 1:
