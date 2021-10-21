@@ -7,19 +7,20 @@ import pathlib
 import re
 import string
 import sys
-from collections import Counter, defaultdict
+# from collections import Counter, defaultdict
 from datetime import datetime as dt
 from itertools import *
 from multiprocessing import Pool, cpu_count
-from unicodedata import normalize
+# from unicodedata import normalize
+from loguru import logger
 
 import pandas as pd
-import pkg_resources
+# import pkg_resources
 # from fuzzywuzzy.fuzz import *
 from rapidfuzz.fuzz import *
 from Levenshtein import jaro_winkler
 from nltk import ngrams
-from nltk.tokenize import sent_tokenize
+# from nltk.tokenize import sent_tokenize
 from tqdm.auto import tqdm
 from utils._abbr import *
 from utils._name_pre import name_preprocessing
@@ -35,7 +36,7 @@ common_phrase = ['capital market']
 locations = [
     x.lower().strip() for x in
     #  (open(loc('locations.csv')).readlines()) if len(x.split())>1]
-    (open(loc('locations.csv')).readlines())
+    (open(loc('location.csv')).readlines())
 ]
 common_phrase = [' '.join(sorted(x.split())) for x in common_phrase] + \
         [' '.join(sorted(x.split())) for x in locations]
@@ -104,8 +105,11 @@ na = set(['north', 'america', 'great']) | set(intl) | set(too_general)
 def match(a, b):
     # part 1: high similarity scores treatment
     if 'matchit' in a and 'matchit' in b:
-        if a.split('matchit')[0].split()[-1]==b.split('matchit')[0].split()[-1]: 
-            return 16
+        try:
+            if a.split('matchit')[0].split()[-1]==b.split('matchit')[0].split()[-1]: 
+                return 16
+        except:
+            logger.info(f"{a} and {b} failed")
     c, d = remove_suffix(a), remove_suffix(b)
     #  x, y = remove_meaningless(b).split(), remove_meaningless(a).split()
     x, y = b.split(), a.split()
@@ -116,7 +120,7 @@ def match(a, b):
     _b = set(b.split()) - suffix
     if not (set(_a) - na):  # if a only has suffix left, bad ...
         return -1
-    if not (set(_a) - na):  # if b only has suffix left, bad ...
+    if not (set(_b) - na):  # if b only has suffix left, bad ...
         return -2
 
     if _has_location(a) and _has_location(b):
