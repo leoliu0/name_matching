@@ -48,7 +48,7 @@ def name_preprocessing(z):
     ]:
         if string.startswith('i'):
             continue
-        z = re.sub('(?<!\w)' + string + '(?!\w)',
+        z = re.sub(r'(?<!\w)' + string + r'(?!\w)',
                    ' ' + adj_string,
                    z,
                    flags=re.IGNORECASE)
@@ -61,7 +61,6 @@ def name_preprocessing(z):
                 counter += 1
 
     if len(set([b for a, b in abbr if b != '']) & set(ws)) == 0:
-        print(z)
         if counter >= 2 and counter/len(set(ws)-set(['matchit']))>=0.6:
             return
     return z.strip().lower()
