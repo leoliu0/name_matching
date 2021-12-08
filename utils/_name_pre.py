@@ -10,7 +10,8 @@ def loc(f):
 __w_3_plus = re.compile(r'\w{3,}')
 __w_ = re.compile(r'\w+')
 
-names = set([x.strip() for x in (open(loc('names_decode.csv')).readlines())])
+names = set([x.strip() for x in
+    (open(loc('names_decode.csv')).readlines()[:1_000_000])])
 names = names | set(['ford'])
 # names from https://github.com/philipperemy/name-dataset
 
