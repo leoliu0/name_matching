@@ -7,8 +7,8 @@ def loc(f):
     return pathlib.Path(__file__).parent.absolute() / f
 
 
-__w_3_plus = re.compile('\w{3,}')
-__w_ = re.compile('\w+')
+__w_3_plus = re.compile(r'\w{3,}')
+__w_ = re.compile(r'\w+')
 
 names = set([x.strip() for x in (open(loc('names_decode.csv')).readlines())])
 names = names | set(['ford'])
@@ -21,6 +21,7 @@ def name_preprocessing(z):
     z = z.split('-pre')[0].split('-adr')[0].split('division of')[-1].split(
         'known as')[-1].split('-consolidated')[0]
     z = re.sub(r'(?=\w+)our\b', r'or', z)
+    z = re.sub(r'old$|new$', r'', z)
     z = re.sub(r'(?=\w+)tt\b', r't', z)
     #  z = re.sub(r'(?=(\w+))([a-zA-Z])\2?',r'\2',z)
     z = re.sub(r'(?=\w+)er\b', r'ers', z)  # to not match e.g. glove vs glover
@@ -28,7 +29,7 @@ def name_preprocessing(z):
     z = re.sub(r'\bco\.? inc\b', r'inc', z)
     z = re.sub(r'\bco\.? ltd\b', r'inc', z)
     z = re.sub(r'\bthe\b', '', z)
-    z = re.sub(r'\b[a-z]\.\b', '', z)
+    z = re.sub(r'\b[a-z]\.(?!\w)\b', '', z)
     z = re.sub(r'\bjr\.\b', '', z)
     z = re.sub(r'\bsr\.\b', '', z)
     z = ' '.join(re.findall(r'[\w\d]+', z))
@@ -60,6 +61,7 @@ def name_preprocessing(z):
                 counter += 1
 
     if len(set([b for a, b in abbr if b != '']) & set(ws)) == 0:
+        print(z)
         if counter >= 2 and counter/len(set(ws)-set(['matchit']))>=0.6:
             return
     return z.strip().lower()
