@@ -41,7 +41,6 @@ def name_preprocessing(z):
         z = z.replace(a, b + ' ')
 
     #TODO: refactor the code to a function
-    print(z)
     for string, adj_string in [
         ('i', ''),
         ('ii', ''),
