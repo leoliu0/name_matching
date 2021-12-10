@@ -22,3 +22,5 @@ def test_preproc():
     assert name_preprocessing('THE DOW CHEMICAL COMPANY')=='dow chemical inc'
     assert name_preprocessing('BAYER AKTIENGESELLSCHAFT')=='bayers inc'
     assert name_preprocessing('RICOH COMPANY, LTD.')=='ricoh inc'
+    assert name_preprocessing('some s.a')=='some sa'
+    assert name_preprocessing('some s a')=='some sa'

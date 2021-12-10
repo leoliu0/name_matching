@@ -41,6 +41,7 @@ def name_preprocessing(z):
         z = z.replace(a, b + ' ')
 
     #TODO: refactor the code to a function
+    print(z)
     for string, adj_string in [
         ('i', ''),
         ('ii', ''),
@@ -49,9 +50,13 @@ def name_preprocessing(z):
     ]:
         if string.startswith('i'):
             continue
-        z = re.sub(r'(?<!\w)' + string + r'(?!\w)',
-                   ' ' + adj_string,
-                   z,
+        if string.startswith('('):
+            z = re.sub(string,
+                   ' ' + adj_string, z,
+                   flags=re.IGNORECASE)
+        else:
+            z = re.sub(r'(?<!\w)' + string + r'(?!\w)',
+                   ' ' + adj_string, z,
                    flags=re.IGNORECASE)
     z = abbr_adj(z)
     ws = __w_.findall(z)
