@@ -27,12 +27,14 @@ if __name__ == '__main__':
 
     def process_chunk(wr, chunk, pbar):
         with Pool(int(cpu_count()*args.cpu)) as p:
-            d = set([x[0] for x in chunk]) | set([x[1] for x in chunk])
-            d = {x: name_preprocessing(x) for x in d}
+            chunksize = len(chunk)//10000 + 1
+            d = list(set([x[0] for x in chunk]) | set([x[1] for x in chunk]))
+            d = {k: v for k, v in zip(
+                d, p.map(name_preprocessing, d, chunksize=chunksize))}
             a = [(x[0], d[x[0]]) for x in chunk]
             b = [(x[1], d[x[1]]) for x in chunk]
 
-            for res in p.map(do, zip(a, b), chunksize=1000):
+            for res in p.map(do, zip(a, b), chunksize=chunksize):
                 pbar.update(1)
                 if res:
                     wr.writerow(res)
