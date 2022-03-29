@@ -248,6 +248,8 @@ hardcode = [
     (r"DU POND", "DU PONT"),
     (r"DUPONT", "DU PONT"),
     (r"DU PONTE", "DU PONT"),
+    (r"\bDUPONT\b", "DUPONT matchit"),
+    (r"\bDU PONT\b", "DUPONT matchit"),
     ("HITACHI", "HITACHI matchit"),
     ("exxon", "exxon matchit"),
     ("exxonmobil", "exxon matchit"),
