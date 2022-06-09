@@ -7,19 +7,23 @@ import pathlib
 import re
 import string
 import sys
+
 # from collections import Counter, defaultdict
 from datetime import datetime as dt
 from itertools import *
 from multiprocessing import Pool, cpu_count
+
 # from unicodedata import normalize
 from loguru import logger
 
 import pandas as pd
+
 # import pkg_resources
 # from fuzzywuzzy.fuzz import *
 from rapidfuzz.fuzz import *
 from Levenshtein import jaro_winkler
 from nltk import ngrams
+
 # from nltk.tokenize import sent_tokenize
 from tqdm.auto import tqdm
 from utils._abbr import *
@@ -32,34 +36,34 @@ def loc(f):
     return pathlib.Path(__file__).parent.absolute() / f
 
 
-common_phrase = ['capital market']
+common_phrase = ["capital market"]
 locations = [
-    x.lower().strip() for x in
+    x.lower().strip()
+    for x in
     #  (open(loc('locations.csv')).readlines()) if len(x.split())>1]
-    (open(loc('location.csv')).readlines())
+    (open(loc("location.csv")).readlines())
 ]
-common_phrase = [' '.join(sorted(x.split())) for x in common_phrase] + \
-        [' '.join(sorted(x.split())) for x in locations]
+common_phrase = [" ".join(sorted(x.split())) for x in common_phrase] + [
+    " ".join(sorted(x.split())) for x in locations
+]
 
-eng = set(json.load(open('words_dictionary.json')).keys())
-eng = eng | set(
-    [x.lower().strip() for x in (open(loc('surname.txt')).readlines())])
-eng = eng | set(
-    [x.lower().strip() for x in (open(loc('firstname.txt')).readlines())])
-eng = eng | set(common_phrase) - set([''])
+eng = set(json.load(open("words_dictionary.json")).keys())
+eng = eng | set([x.lower().strip() for x in (open(loc("surname.txt")).readlines())])
+eng = eng | set([x.lower().strip() for x in (open(loc("firstname.txt")).readlines())])
+eng = eng | set(common_phrase) - set([""])
 
-common_abbr = set([x for _, x in abbr1 if x != ''])
-common_abbr12 = set([x for _, x in abbr if x != '']) | eng | suffix
+common_abbr = set([x for _, x in abbr1 if x != ""])
+common_abbr12 = set([x for _, x in abbr if x != ""]) | eng | suffix
 
-__remove_suffix = re.compile(r'\b' + r'\b|\b'.join(suffix) + r'\b')
+__remove_suffix = re.compile(r"\b" + r"\b|\b".join(suffix) + r"\b")
 
 
 def remove_suffix(name):  # Remove suffix
-    return __remove_suffix.sub('', name).strip()
+    return __remove_suffix.sub("", name).strip()
 
 
 def check_double(a, b):
-    ''' account for double ('BALL & BALL CARBURETOR COMPANY','BALL CORP')'''
+    """account for double ('BALL & BALL CARBURETOR COMPANY','BALL CORP')"""
     for a1, a2 in ngrams(a, 2):
         if ratio(a1, a2) > 89:
             if a1 in suffix or a2 in suffix:
@@ -76,7 +80,7 @@ def check_double(a, b):
                 return False
 
 
-location_remove = re.compile(r'\b|\b'.join([x.strip() for x in locations]))
+location_remove = re.compile(r"\b|\b".join([x.strip() for x in locations]))
 
 
 def _has_location(name):
@@ -89,24 +93,53 @@ def _has_location(name):
 
 #  return name.strip()
 
-ban_list = ('organization', 'organization', 'academy', 'university', 'agency',
-            'republic', 'union', '21st', 'commission', 'council', 'school',
-            'community', 'institute', 'federation', 'nations', 'association',
-            'church', 'society', 'league', '800', '24', 'great america')
+ban_list = (
+    "organization",
+    "organization",
+    "academy",
+    "university",
+    "agency",
+    "republic",
+    "union",
+    "21st",
+    "commission",
+    "council",
+    "school",
+    "community",
+    "institute",
+    "federation",
+    "nations",
+    "association",
+    "church",
+    "society",
+    "league",
+    "800",
+    "24",
+    "great america",
+)
 
-__w_plus = re.compile('[a-z]+')
-intl = ('global', 'international', 'worldwide', 'national')
-too_general = ('and', 'of', 'for', 'holdings', 'holding', 'group',
-               'enterprises', 'international', 'global')
+__w_plus = re.compile("[a-z]+")
+intl = ("global", "international", "worldwide", "national")
+too_general = (
+    "and",
+    "of",
+    "for",
+    "holdings",
+    "holding",
+    "group",
+    "enterprises",
+    "international",
+    "global",
+)
 
-na = set(['north', 'america', 'great']) | set(intl) | set(too_general)
+na = set(["north", "america", "great"]) | set(intl) | set(too_general)
 
 
 def match(a, b):
     # part 1: high similarity scores treatment
-    if 'matchit' in a and 'matchit' in b:
+    if "matchit" in a and "matchit" in b:
         try:
-            if a.split('matchit')[0].split()[-1]==b.split('matchit')[0].split()[-1]: 
+            if a.split("matchit")[0].split()[-1] == b.split("matchit")[0].split()[-1]:
                 return 16
         except:
             logger.info(f"{a} and {b} failed")
@@ -128,7 +161,7 @@ def match(a, b):
             return 21
         else:
             return -22
-    if a.replace(' ', '') == b.replace(' ', ''):
+    if a.replace(" ", "") == b.replace(" ", ""):
         if len(a) > 8:
             return 1
     if (token_sort_ratio(a, b) == 100) or (ratio(sorted(c), sorted(d)) == 100):
@@ -169,18 +202,20 @@ def match(a, b):
                 threshold = 92  # more strict if very short name
             else:
                 threshold = 89
-            if ((len(x) == len(y)) and (len(x) > 3)):
+            if (len(x) == len(y)) and (len(x) > 3):
                 threshold = 75
-            if ((score > threshold)
-                    and (wx[0] == wy[0])  # first letter must match
-                    and
-                (wy[-1] not in '1234567890')):  # last char is not a number
+            if (
+                (score > threshold)
+                and (wx[0] == wy[0])  # first letter must match
+                and (wy[-1] not in "1234567890")
+            ):  # last char is not a number
                 good_x.add(wx)
             #  if score>89 and wx[:5]==wy[:5] and len(wx)>7 and len(wy)>7:
             if jaro_winkler(wx, wy) > 0.92:
                 good_y.add(wy)
         if (wx not in good_x) and (
-                wx not in suffix):  # every word in X must have a match in Y
+            wx not in suffix
+        ):  # every word in X must have a match in Y
             has_bad_x = True
         if (wx not in good_x) and m == 1:  # First X word much match
             has_bad_x = True
@@ -189,7 +224,7 @@ def match(a, b):
     # match on high scores
     h_score = 94
     #  if ((token_sort_ratio(c,d)>h_score) or (token_sort_ratio(a,b)>h_score)):
-    if ((token_sort_ratio(c, d) > h_score)):
+    if token_sort_ratio(c, d) > h_score:
         if has_bad_x == False:
             if a[0] == b[0]:
                 return 2
@@ -201,10 +236,10 @@ def match(a, b):
         if (x[0] in eng) or (len(x[0]) < 5):
             return -5
     if len(x) == 2:
-        if ' '.join(x[:2]) in eng:
+        if " ".join(x[:2]) in eng:
             return -6
     if len(x) == 3:
-        if ' '.join(x[:3]) in eng:
+        if " ".join(x[:3]) in eng:
             return -13
 
     # part 2: low simiarity, try more cleaning ...
@@ -213,8 +248,10 @@ def match(a, b):
     if check_double(y, x) is False:
         return False
 
-    if len(set(c.split()) - common_abbr -
-           good_y) == 0 or len(set(d.split()) - common_abbr - good_x) == 0:
+    if (
+        len(set(c.split()) - common_abbr - good_y) == 0
+        or len(set(d.split()) - common_abbr - good_x) == 0
+    ):
         remain_good_y = set(good_y) - suffix
         if len(remain_good_y) == 1:
             good_wy = __w_plus.findall(next(iter(remain_good_y)))
@@ -232,33 +269,33 @@ def match(a, b):
                 if score_x[m] < 80:
                     return -20
 
-        if x[0] in good_x and y[0] in good_y and x[0] not in eng and y[
-                0] not in eng:
+        if x[0] in good_x and y[0] in good_y and x[0] not in eng and y[0] not in eng:
             if a[:3] == b[:3]:
                 return 10
 
     __good_y = good_y - common_abbr - suffix
     __good_x = good_x - common_abbr - suffix
 
-    if len(__good_y) * len(
-        [w for q in __good_y for w in q if w in string.ascii_letters]) > 12:
-        if ' '.join(sorted(__good_y)) not in eng:
-            pos_good_y, pos_good_x = [], [
-            ]  # the words in __good_y must be together
+    if (
+        len(__good_y)
+        * len([w for q in __good_y for w in q if w in string.ascii_letters])
+        > 12
+    ):
+        if " ".join(sorted(__good_y)) not in eng:
+            pos_good_y, pos_good_x = [], []  # the words in __good_y must be together
             if __good_x:
                 for w in __good_y:
                     pos_good_y.append(pos_y[w])
                 for w in __good_x:
                     pos_good_x.append(pos_x[w])
-                if ((len(pos_good_y)
-                     == (1 + max(pos_good_y) - min(pos_good_y)))
-                        and (len(pos_good_x)
-                             == (1 + max(pos_good_x) - min(pos_good_x)))):
+                if (len(pos_good_y) == (1 + max(pos_good_y) - min(pos_good_y))) and (
+                    len(pos_good_x) == (1 + max(pos_good_x) - min(pos_good_x))
+                ):
                     if (y[0] in good_y) and (y[0] not in eng):
                         if (score_x[1] > 89) and len(score_x) == 1:
                             return 4
                         elif len(score_x) > 1:
-                            if (score_x[1] > 89 and score_x[2] > 89):
+                            if score_x[1] > 89 and score_x[2] > 89:
                                 return 4
                     else:  # first y is not matched ... match them if first word is global
                         if y[0] in intl and score_x[1] > 93:
@@ -275,14 +312,13 @@ def match(a, b):
             #  if x[0]==y[0] and x[0] not in eng and has_bad_x==False:
             if x[0] == y[0] and has_bad_x == False:
                 return 8
-            if ((' '.join([x[0], x[1]]) not in eng)
-                    and (' '.join([y[0], y[1]]) not in eng)):
+            if (" ".join([x[0], x[1]]) not in eng) and (
+                " ".join([y[0], y[1]]) not in eng
+            ):
                 if x[0] in eng and x[1] in eng and y[0] in eng and y[1] in eng:
-                    if len(_y - good_y -
-                           common_abbr) > 0 and has_bad_x == True:
+                    if len(_y - good_y - common_abbr) > 0 and has_bad_x == True:
                         return -19
-                if jaro_winkler(x[0], y[0]) > 0.97 and jaro_winkler(
-                        x[1], y[1]) > 0.94:
+                if jaro_winkler(x[0], y[0]) > 0.97 and jaro_winkler(x[1], y[1]) > 0.94:
                     if x[0] not in intl and y[1] not in intl:
                         if has_bad_x == True:
                             if len(_y - good_y) == 0:
@@ -291,14 +327,13 @@ def match(a, b):
                             return 9
             else:
                 return -9
-        else: 
+        else:
             return -99
 
     if len(_x) == 1 and len(_y) == 1:
         if jaro_winkler(x[0], y[0]) > 0.97 and len(x[0]) > 7:
             if abs(len(x[0]) - len(y[0])) <= 1:
-                if x[0] in common_abbr not in intl and y[
-                        0] not in common_abbr in intl:
+                if x[0] in common_abbr not in intl and y[0] not in common_abbr in intl:
                     return 11
                 else:
                     return -12
@@ -322,8 +357,7 @@ def match(a, b):
     remaining_x = set(x) - common_abbr - suffix
     if not remaining_x:  # if nothing left in x
         return -10
-    if len(remaining_x
-           ) == 1:  # if after remove things, the x is a letter, bad match
+    if len(remaining_x) == 1:  # if after remove things, the x is a letter, bad match
         remaining_wx = next(iter(remaining_x))
         if len(remaining_wx) == 1:  # or remaining_wx in eng:
             return -11
@@ -349,48 +383,62 @@ def unpacking(main_row):
     for base_index, base_name, base_pre, base_suffix in base_.values:
         if token_set_ratio(main_suffix, base_suffix) > cutoff:
             if match(main_pre, base_pre) > 0:
-                lst.append([
-                    main_index, main_name, base_index, base_name,
-                    token_sort_ratio(main_suffix, base_suffix)
-                ])
+                lst.append(
+                    [
+                        main_index,
+                        main_name,
+                        base_index,
+                        base_name,
+                        token_sort_ratio(main_suffix, base_suffix),
+                    ]
+                )
     return lst
 
 
 def main():
-    with Pool(int(cpu_count()*args.c/100) - 1) as p:
-        with open(output, 'w', newline='') as w:
+    with Pool(int(cpu_count() * args.c / 100) - 1) as p:
+        with open(output, "w", newline="") as w:
             wr = csv.writer(w)
-            for result in tqdm(p.imap(unpacking, main_.values,
-                            chunksize=100),total=len(main_)):
-                    if result:
-                        wr.writerows(result)
+            for result in tqdm(
+                p.imap(unpacking, main_.values, chunksize=100), total=len(main_)
+            ):
+                if result:
+                    wr.writerows(result)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("input")
     parser.add_argument("-b")
     parser.add_argument("-o")
-    parser.add_argument("-c",type=int,default=100)
+    parser.add_argument("-c", type=int, default=100)
+    parser.add_argument("--dont_rm_ppl", action="store_false")
     args = parser.parse_args()
-    output = args.o if args.o else '__match__.csv'
+    output = args.o if args.o else "__match__.csv"
     filename = args.input
-    print('pre-processing... this could take a while...')
-    basefile = args.b if args.b else 'stocknames.csv'
+    print("pre-processing... this could take a while...")
+    basefile = args.b if args.b else "stocknames.csv"
     base_ = pd.read_csv(basefile).dropna()
     main_ = pd.read_csv(filename).dropna()
     # disambiguation
-    base_['pre_proc'] = base_[base_.columns[1]].map(name_preprocessing)
-    main_['pre_proc'] = main_[main_.columns[1]].map(name_preprocessing)
+    def name_pre(z):
+        return name_preprocessing(z, remove_people=args.dont_rm_ppl)
+
+    base_["pre_proc"] = base_[base_.columns[1]].map(name_pre)
+    main_["pre_proc"] = main_[main_.columns[1]].map(name_pre)
     base_ = base_.dropna()
     main_ = main_.dropna()
-    base_['nosuffix'] = base_['pre_proc'].map(remove_suffix)
-    main_['nosuffix'] = main_['pre_proc'].map(remove_suffix)
+    base_["nosuffix"] = base_["pre_proc"].map(remove_suffix)
+    main_["nosuffix"] = main_["pre_proc"].map(remove_suffix)
     base_ = base_.dropna()
     main_ = main_.dropna()
 
     wastime = dt.now()
-    print(wastime, 'start now ...')
+    print(wastime, "start now ...")
     main()
-    print(dt.now(), 'finished, takes',
-          (dt.now() - wastime).total_seconds() / 60, 'minutes')
+    print(
+        dt.now(),
+        "finished, takes",
+        (dt.now() - wastime).total_seconds() / 60,
+        "minutes",
+    )
