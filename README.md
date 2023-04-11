@@ -11,6 +11,7 @@ To help with this project, add name pair that should be matched to the white lis
 git clone this repo. If you do not know how to use git. Download this repo as zip and unzip it.
 
 Make sure you have Python 3.6+ installed and install any missing packages it tells you to install
+
 ```pip install pandas rapidfuzz nltk loguru```
 
 Place your name file in to the unzipped folder. The name file has to be in the following csv format:
