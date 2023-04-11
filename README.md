@@ -29,8 +29,10 @@ After having this file, run
 
 This will result in __result__.csv file that contains the matched results like the following:
 
+```
 1,apple inc, 12345, APPLE INC, 100
 ...
+```
 
 The result columns are: your_index, your_name, permno, name_in_CRSP, matching_score
 
