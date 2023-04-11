@@ -12,10 +12,12 @@ git clone this repo. If you do not know how to use git. Download this repo as zi
 
 Place your name file in to the unzipped folder. The name file has to be in the following csv format:
 
+```csv
 1,apple inc
 2,microsoft corp
 3,whatever inc
 ...
+```
 
 where you have an index column and the name colume to match.
 
