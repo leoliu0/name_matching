@@ -2,3 +2,5 @@ rapidfuzz
 fuzzywuzzy
 pandas
 numpy
+Levenshtein
+nltk
