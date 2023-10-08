@@ -399,8 +399,9 @@ def main():
     with Pool(int(cpu_count() * args.c / 100) - 1) as p:
         with open(output, "w", newline="") as w:
             wr = csv.writer(w)
+            if len(main_)<10000: chunksize=1 else: chunksize=100
             for result in tqdm(
-                p.imap(unpacking, main_.values, chunksize=100), total=len(main_)
+                p.imap(unpacking, main_.values, chunksize=chunksize), total=len(main_)
             ):
                 if result:
                     wr.writerows(result)

@@ -1,15 +1,13 @@
 #!/usr/bin/python
-import argparse,csv,math,os,re,string,sys
-from collections import Counter, defaultdict
+import argparse,csv,re
+from collections import Counter
 from multiprocessing import Pool
 from datetime import datetime as dt
 from itertools import *
-from unicodedata import normalize
 
 import pandas as pd
 
 from fuzzywuzzy import fuzz
-from nltk.tokenize import sent_tokenize
 
 def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2,s3), ..."

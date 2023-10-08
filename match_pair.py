@@ -1,13 +1,10 @@
 #!/bin/python
 import argparse
-import pandas as pd
 import csv
-from concurrent.futures import ProcessPoolExecutor, as_completed
 from multiprocessing import cpu_count
 from concurrent.futures import ProcessPoolExecutor as Pool
 from loguru import logger
 from tqdm.auto import tqdm
-from icecream import ic
 
 from matcher import match, name_preprocessing
 

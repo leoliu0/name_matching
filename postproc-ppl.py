@@ -13,7 +13,6 @@ with open('firstname.txt', 'r') as f:
 allname = sur | first
 
 def pp(s):
-    n = 0
     names = re.findall(r'[\w\d]+',s)
     for x in names:
         if x.lower() not in allname:
