@@ -399,7 +399,7 @@ def main():
     with Pool(int(cpu_count() * args.c / 100) - 1) as p:
         with open(output, "w", newline="") as w:
             wr = csv.writer(w)
-            if len(main_)<10000: chunksize=1 else: chunksize=100
+            chunksize = 1 if len(main_) < 10000 else 100
             for result in tqdm(
                 p.imap(unpacking, main_.values, chunksize=chunksize), total=len(main_)
             ):
@@ -421,6 +421,7 @@ if __name__ == "__main__":
     basefile = args.b if args.b else "stocknames.csv"
     base_ = pd.read_csv(basefile).dropna()
     main_ = pd.read_csv(filename).dropna()
+
     # disambiguation
     def name_pre(z):
         return name_preprocessing(z, remove_people=args.dont_rm_ppl)
