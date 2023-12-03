@@ -397,7 +397,8 @@ def unpacking(main_row):
 
 
 def main():
-    with Pool(int(cpu_count() * args.c / 100) - 1) as p:
+    with Pool(cores := (int(cpu_count() * args.cpu / 100) - 1)) as p:
+        print(f"Using {cores} cores to process")
         with open(output, "w", newline="") as w:
             wr = csv.writer(w)
             chunksize = 1 if len(main_) < 10000 else args.c
