@@ -7,6 +7,7 @@ import pathlib
 import re
 import string
 import sys
+from pandarallel import pandarallel
 
 # from collections import Counter, defaultdict
 from datetime import datetime as dt
@@ -399,7 +400,7 @@ def main():
     with Pool(int(cpu_count() * args.c / 100) - 1) as p:
         with open(output, "w", newline="") as w:
             wr = csv.writer(w)
-            chunksize = 1 if len(main_) < 10000 else 100
+            chunksize = 1 if len(main_) < 10000 else args.c
             for result in tqdm(
                 p.imap(unpacking, main_.values, chunksize=chunksize), total=len(main_)
             ):
@@ -410,9 +411,14 @@ def main():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("input")
-    parser.add_argument("-b")
-    parser.add_argument("-o")
-    parser.add_argument("-c", type=int, default=100)
+    parser.add_argument("-b", help="base dataset, default is stocknames.csv")
+    parser.add_argument("-o", help="default output file, default __match__.csv")
+    parser.add_argument(
+        "-c",
+        type=int,
+        default=100,
+        help="fraction of cores to use, in percentage, default using all cores",
+    )
     parser.add_argument("--dont_rm_ppl", action="store_false")
     args = parser.parse_args()
     output = args.o if args.o else "__match__.csv"
@@ -426,12 +432,14 @@ if __name__ == "__main__":
     def name_pre(z):
         return name_preprocessing(z, remove_people=args.dont_rm_ppl)
 
-    base_["pre_proc"] = base_[base_.columns[1]].map(name_pre)
-    main_["pre_proc"] = main_[main_.columns[1]].map(name_pre)
+    pandarallel.initialize()
+
+    base_["pre_proc"] = base_[base_.columns[1]].parallel_map(name_pre)
+    main_["pre_proc"] = main_[main_.columns[1]].parallel_map(name_pre)
     base_ = base_.dropna()
     main_ = main_.dropna()
-    base_["nosuffix"] = base_["pre_proc"].map(remove_suffix)
-    main_["nosuffix"] = main_["pre_proc"].map(remove_suffix)
+    base_["nosuffix"] = base_["pre_proc"].parallel_map(remove_suffix)
+    main_["nosuffix"] = main_["pre_proc"].parallel_map(remove_suffix)
     base_ = base_.dropna()
     main_ = main_.dropna()
 
